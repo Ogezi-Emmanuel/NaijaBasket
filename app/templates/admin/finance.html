@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_pill, escrow_pin %}
+{% block title %}Escrow &amp; finance{% endblock %}
+{% block content %}
+
+<div class="row-between">
+  <div>
+    <span class="eyebrow">Platform governance</span>
+    <h1 class="mb-0">Escrow &amp; settlements</h1>
+    <p class="muted mb-0 small">
+      Funds held in escrow are released only against a verified delivery PIN.
+    </p>
+  </div>
+  <div class="btn-row">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.dashboard') }}">Console</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.partners') }}">Partners</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.orders') }}">Orders</a>
+  </div>
+</div>
+
+<section class="grid grid-4 mt-3">
+  <div class="kpi kpi-primary">
+    <div class="kpi-label">Held in escrow</div>
+    <div class="kpi-value">{{ totals.held|naira }}</div>
+    <div class="kpi-sub">awaiting PIN release</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Merchant payouts</div>
+    <div class="kpi-value">{{ totals.merchant_paid|naira }}</div>
+    <div class="kpi-sub">released after commission</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Rider payouts</div>
+    <div class="kpi-value">{{ totals.rider_paid|naira }}</div>
+    <div class="kpi-sub">last-mile logistics</div>
+  </div>
+  <div class="kpi kpi-dark">
+    <div class="kpi-label">Net contribution</div>
+    <div class="kpi-value">{{ totals.net_margin|naira }}</div>
+    <div class="kpi-sub">of {{ totals.platform_revenue|naira }} gross revenue</div>
+  </div>
+</section>
+
+<div class="sidebar-layout mt-3">
+  <div class="stack">
+    <section class="card card-pad">
+      <div class="card-title">
+        <h2>Escrow breakdown</h2>
+        <span class="pill pill-primary">{{ escrow_breakdown|length }} state(s)</span>
+      </div>
+      <div class="table-wrap">
+        <table class="table table-sm">
+          <thead><tr><th>Escrow state</th><th class="num">Orders</th><th class="num">GMV</th></tr></thead>
+          <tbody>
+            {% for row in escrow_breakdown %}
+              <tr>
+                <td>{{ row.status|replace('_', ' ')|capitalize }}</td>
+                <td class="num">{{ row.count }}</td>
+                <td class="num">{{ row.gmv|naira }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="3" class="muted small">No escrow activity yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card card-pad">
+      <div class="card-title"><h2>Ledger by party</h2></div>
+      <div class="table-wrap">
+        <table class="table table-sm">
+          <thead><tr><th>Party</th><th>Entry</th><th class="num">Count</th><th class="num">Total</th></tr></thead>
+          <tbody>
+            {% for row in ledger_rows %}
+              <tr>
+                <td>{{ row.party|capitalize }}</td>
+                <td>{{ row.entry_type|replace('_', ' ')|capitalize }}</td>
+                <td class="num">{{ row.count }}</td>
+                <td class="num">{{ row.total|naira }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="4" class="muted small">Ledger is empty.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card card-pad">
+      <div class="card-title"><h2>Recent settlements</h2></div>
+      <div class="table-wrap">
+        <table class="table table-sm">
+          <thead>
+            <tr><th>Order</th><th>Placed</th><th>Status</th><th>Escrow</th><th class="num">GMV</th><th class="num">Commission</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for order in settlements %}
+              <tr>
+                <td class="mono">{{ order.order_number }}</td>
+                <td class="muted small nowrap">{{ order.created_at.strftime('%d %b %H:%M') }}</td>
+                <td>{{ status_pill(order.status) }}</td>
+                <td><span class="pill {{ 'pill-success' if order.payment_escrow_status == 'released' else ('pill-primary' if order.payment_escrow_status == 'held' else 'pill-muted') }}">{{ order.payment_escrow_status|replace('_', ' ')|capitalize }}</span></td>
+                <td class="num">{{ order.gmv_amount|naira }}</td>
+                <td class="num">{{ order.commission_amount|naira }}</td>
+                <td class="text-right"><a class="btn btn-ghost btn-sm" href="{{ url_for('orders.detail', ref=order.order_number) }}">Inspect</a></td>
+              </tr>
+            {% else %}
+              <tr><td colspan="7" class="muted small">No settled orders yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <aside class="stack">
+    <section class="card card-pad">
+      <h3>Escrow policy</h3>
+      <ul class="data-list">
+        <li><span class="dl-key">Release trigger</span><span class="dl-val">4-digit PIN</span></li>
+        <li><span class="dl-key">PIN storage</span><span class="dl-val">SHA-256 + salt</span></li>
+        <li><span class="dl-key">PIN disclosure</span><span class="dl-val">Owner only</span></li>
+        <li><span class="dl-key">Auto-refund</span><span class="dl-val">On SLA breach</span></li>
+      </ul>
+      <p class="tiny faint mt-2 mb-0">
+        Riders never receive the PIN. The consumer hands it over in person, and the
+        platform settles the merchant and rider payouts the instant it verifies.
+      </p>
+    </section>
+
+    <section class="card card-pad">
+      <h3>Release preview</h3>
+      <p class="muted small">How the delivery PIN is presented to the order owner.</p>
+      {{ escrow_pin('••••', reveal=False) }}
+    </section>
+  </aside>
+</div>
+
+{% endblock %}

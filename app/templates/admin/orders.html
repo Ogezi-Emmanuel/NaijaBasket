@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_pill %}
+{% block title %}All orders{% endblock %}
+{% block content %}
+
+<div class="row-between">
+  <div>
+    <span class="eyebrow">Platform governance</span>
+    <h1 class="mb-0">Orders</h1>
+    <p class="muted mb-0 small">
+      {% if status %}{{ status_labels.get(status, status) }}{% else %}All statuses{% endif %}
+      · {{ orders|length }} order(s)
+    </p>
+  </div>
+  <div class="btn-row">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.dashboard') }}">Console</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.finance') }}">Finance</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.partners') }}">Partners</a>
+  </div>
+</div>
+
+<nav class="chip-row mt-2" aria-label="Filter by status">
+  <a class="chip {{ 'is-active' if not status else '' }}" href="{{ url_for('admin.orders') }}">All</a>
+  {% for key, label in status_labels.items() %}
+    <a class="chip {{ 'is-active' if status == key else '' }}"
+       href="{{ url_for('admin.orders', status=key) }}">{{ label }}</a>
+  {% endfor %}
+</nav>
+
+<section class="card card-pad mt-3">
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Order</th><th>Placed</th><th>Buyer</th><th>Store</th><th>Status</th>
+          <th>Escrow</th><th class="num">GMV</th><th class="num">Net margin</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in orders %}
+          <tr>
+            <td class="mono">{{ order.order_number }}</td>
+            <td class="muted small nowrap">{{ order.created_at.strftime('%d %b %H:%M') }}</td>
+            <td class="small">
+              {{ order.user.name if order.user else '—' }}
+              {% if order.user %}<br><span class="tiny faint">{{ order.user.email }}</span>{% endif %}
+            </td>
+            <td class="small">{{ order.store.name if order.store else '—' }}</td>
+            <td>{{ status_pill(order.status) }}</td>
+            <td>
+              <span class="pill {{ 'pill-success' if order.payment_escrow_status == 'released' else ('pill-primary' if order.payment_escrow_status == 'held' else 'pill-muted') }}">
+                {{ order.payment_escrow_status|replace('_', ' ')|capitalize }}
+              </span>
+            </td>
+            <td class="num">{{ order.gmv_amount|naira }}</td>
+            <td class="num">{{ order.net_contribution_margin|naira }}</td>
+            <td class="text-right">
+              <a class="btn btn-ghost btn-sm" href="{{ url_for('orders.detail', ref=order.order_number) }}">Inspect</a>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="9" class="muted small">No orders match this filter.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% endblock %}

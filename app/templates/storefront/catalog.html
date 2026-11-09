@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% from "_macros.html" import product_card %}
+{% block title %}Catalogue{% endblock %}
+{% block content %}
+
+<div class="row-between">
+  <div>
+    <h1 class="mb-0">The catalogue</h1>
+    <p class="muted mb-0 small">
+      {{ products|length }} listing(s) shown
+      {% if store_id %}· filtered to one partner{% endif %}
+      {% if query %}· matching “{{ query }}”{% endif %}
+      · minimum basket {{ NB.min_order_value|naira }}
+    </p>
+  </div>
+  <form method="get" action="{{ url_for('storefront.catalog') }}" class="row" style="gap:8px">
+    <input type="hidden" name="q" value="{{ query }}">
+    {% if category %}<input type="hidden" name="category" value="{{ category }}">{% endif %}
+    <label class="sr-only" for="sort">Sort</label>
+    <select class="select" id="sort" name="sort" onchange="this.form.submit()">
+      <option value="popular" {{ 'selected' if sort == 'popular' }}>Most popular</option>
+      <option value="price_asc" {{ 'selected' if sort == 'price_asc' }}>Price: low to high</option>
+      <option value="price_desc" {{ 'selected' if sort == 'price_desc' }}>Price: high to low</option>
+    </select>
+    <noscript><button class="btn btn-ghost btn-sm" type="submit">Apply</button></noscript>
+  </form>
+</div>
+
+<div class="card card-pad mt-2">
+  <form method="get" action="{{ url_for('storefront.catalog') }}" class="grid grid-2" style="gap:14px">
+    <input type="hidden" name="sort" value="{{ sort }}">
+    <div class="field mb-0">
+      <label class="label" for="q">Search</label>
+      <input class="input" id="q" type="search" name="q" value="{{ query }}"
+             placeholder="Rice, tomatoes, detergent, NAFDAC number…">
+    </div>
+    <div class="field mb-0">
+      <label class="label" for="store">Partner store</label>
+      <select class="select" id="store" name="store">
+        <option value="">All partners</option>
+        {% for store in stores %}
+          <option value="{{ store.id }}" {{ 'selected' if store_id == store.id }}>{{ store.name }} · {{ store.sla_rating|round(1) }} SLA</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% if category %}<input type="hidden" name="category" value="{{ category }}">{% endif %}
+    <div class="btn-row" style="grid-column:1/-1">
+      <button class="btn btn-primary" type="submit">Apply filters</button>
+      <a class="btn btn-ghost" href="{{ url_for('storefront.catalog') }}">Clear</a>
+    </div>
+  </form>
+</div>
+
+<div class="chip-row mt-2">
+  <a class="chip {{ 'is-active' if not category }}" href="{{ url_for('storefront.catalog', q=query, sort=sort, store=store_id) }}">
+    All aisles
+  </a>
+  {% for value in CATEGORIES %}
+    <a class="chip {{ 'is-active' if category == value }}"
+       href="{{ url_for('storefront.catalog', category=value, q=query, sort=sort, store=store_id) }}">
+      {{ category_labels[value] }}
+      <span class="chip-count">{{ counts.get(value, 0) }}</span>
+    </a>
+  {% endfor %}
+</div>
+
+{% if products %}
+  <div class="grid grid-cards mt-2">
+    {% for product in products %}{{ product_card(product, badge=None) }}{% endfor %}
+  </div>
+{% else %}
+  <div class="empty mt-2">
+    <h3>Nothing matched that basket request</h3>
+    <p class="muted">Try a broader aisle or clear your filters. Partner stores restock daily.</p>
+    <a class="btn btn-primary" href="{{ url_for('storefront.catalog') }}">Reset the catalogue</a>
+  </div>
+{% endif %}
+
+<div class="note mt-3">
+  Food listings on NaijaBasket cannot go live without a valid NAFDAC registration number.
+  Chemicals are always picked last, into a sealed liner, and never share a lane with food.
+</div>
+
+{% endblock %}

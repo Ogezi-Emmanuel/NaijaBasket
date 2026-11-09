@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Something broke{% endblock %}
+{% block content %}
+<div class="empty">
+  <span class="pill pill-danger">500</span>
+  <h3>Our side stumbled</h3>
+  <p class="muted">The transaction log was rolled back, so no money moved and no stock was reserved. Try again in a moment.</p>
+  <div class="btn-row" style="justify-content:center">
+    <a class="btn btn-primary" href="{{ url_for('storefront.index') }}">Back to safety</a>
+  </div>
+</div>
+{% endblock %}

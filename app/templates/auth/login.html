@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Sign in{% endblock %}
+{% block content %}
+<div class="sidebar-layout">
+  <section class="card card-pad">
+    <h2>Welcome back</h2>
+    <p class="muted small">Pick up your recurring basket where you left it.</p>
+
+    {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+
+    <form method="post" action="{{ url_for('auth.login', next=request.args.get('next')) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="field">
+        <label class="label" for="email">Email</label>
+        <input class="input" id="email" name="email" type="email" value="{{ email }}"
+               autocomplete="email" required autofocus>
+      </div>
+
+      <div class="field">
+        <label class="label" for="password">Password</label>
+        <input class="input" id="password" name="password" type="password"
+               autocomplete="current-password" required>
+      </div>
+
+      <label class="row small muted" style="margin-bottom:16px">
+        <input type="checkbox" name="remember" value="1" checked> Keep me signed in on this device
+      </label>
+
+      <button class="btn btn-primary btn-lg btn-block" type="submit">Sign in</button>
+    </form>
+
+    <p class="small muted mt-3 mb-0">
+      New to NaijaBasket? <a href="{{ url_for('auth.register', next=request.args.get('next')) }}">Create an account</a>.
+    </p>
+  </section>
+
+  <aside class="stack">
+    <div class="card card-dark card-pad">
+      <h3>Sandbox credentials</h3>
+      <p class="small mb-2">Seeded accounts for reviewing the platform. Password for every account is <span class="mono">Password123!</span></p>
+      <ul class="data-list">
+        <li><span class="dl-key">Consumer</span><span class="dl-val mono">consumer@naijabasket.ng</span></li>
+        <li><span class="dl-key">Subscriber</span><span class="dl-val mono">subscriber@naijabasket.ng</span></li>
+        <li><span class="dl-key">Merchant OMS</span><span class="dl-val mono">merchant@naijabasket.ng</span></li>
+        <li><span class="dl-key">Admin console</span><span class="dl-val mono">admin@naijabasket.ng</span></li>
+      </ul>
+    </div>
+    <div class="note note-accent">
+      Payments and couriers run in sandbox mode until live Paystack, Flutterwave,
+      Kwik or Gokada keys are added to the environment.
+    </div>
+  </aside>
+</div>
+{% endblock %}

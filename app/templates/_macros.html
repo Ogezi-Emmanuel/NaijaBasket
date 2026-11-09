@@ -1,0 +1,117 @@
+{# ---------------------------------------------------------------------------
+   Shared UI macros. Product photography is hotlinked from the Wikimedia
+   Commons CDN; should a fetch ever fail, the image falls back to the bundled
+   app icon so nothing renders as a broken placeholder.
+   --------------------------------------------------------------------------- #}
+{% macro product_image(product) -%}
+{{ product.image_url or url_for('static', filename='icons/icon-maskable.svg') }}
+{%- endmacro %}
+
+{% macro img_fallback() -%}
+onerror="this.onerror=null;this.src='{{ url_for('static', filename='icons/icon-maskable.svg') }}';"
+{%- endmacro %}
+
+{% macro product_card(product, store_name=None, badge=None) %}
+<article class="product-card">
+  <div class="product-media">
+    <img src="{{ product_image(product) }}" {{ img_fallback() }} alt="{{ product.name }}" loading="lazy" width="400" height="300">
+    {% if product.requires_nafdac %}
+      {% if product.nafdac_verified %}
+        <span class="verify-badge">NAFDAC verified</span>
+      {% else %}
+        <span class="verify-badge is-missing">NAFDAC pending</span>
+      {% endif %}
+    {% endif %}
+    {% if not product.in_stock %}<span class="stock-ribbon">Sold out</span>{% endif %}
+  </div>
+  <div class="product-body">
+    <h3 class="product-name">{{ product.name }}</h3>
+    <div class="product-meta">
+      {{ CATEGORY_LABELS.get(product.category, product.category) }}
+      {%- set sname = store_name if store_name else (product.store.name if product.store else '') -%}
+      {%- if sname %} · {{ sname }}{% endif %}
+    </div>
+    {% if badge %}<span class="pill pill-accent">{{ badge }}</span>{% endif %}
+    <div class="row-between">
+      <span class="price">{{ product.price|naira }}<span class="price-unit">/{{ product.unit }}</span></span>
+      {% if product.stock_qty and product.stock_qty <= 12 %}
+        <span class="pill pill-warning">Low · {{ product.stock_qty }}</span>
+      {% endif %}
+    </div>
+    <div class="product-actions">
+      <button class="btn btn-primary btn-sm btn-block"
+              type="button"
+              data-add-to-cart="{{ product.id }}"
+              {% if not product.in_stock %}disabled{% endif %}>
+        {% if product.in_stock %}Add to basket{% else %}Out of stock{% endif %}
+      </button>
+    </div>
+  </div>
+</article>
+{% endmacro %}
+
+{% macro suggestion_card(suggestion) %}
+{% set product = suggestion.product %}
+<article class="product-card">
+  <div class="product-media">
+    <img src="{{ product_image(product) }}" {{ img_fallback() }} alt="{{ product.name }}" loading="lazy" width="400" height="300">
+    <span class="verify-badge">{{ suggestion.badge }}</span>
+  </div>
+  <div class="product-body">
+    <h3 class="product-name">{{ product.name }}</h3>
+    <div class="product-meta">{{ suggestion.reason }}</div>
+    <div class="row-between">
+      <span class="price">{{ product.price|naira }}</span>
+    </div>
+    <div class="product-actions">
+      <button class="btn btn-ghost btn-sm btn-block" type="button" data-add-to-cart="{{ product.id }}">Add to basket</button>
+    </div>
+  </div>
+</article>
+{% endmacro %}
+
+{% macro safety_flag(lane, label=None) %}
+<span class="safety-flag" data-lane="{{ lane }}">{{ label or SAFETY_LABELS.get(lane, lane) }}</span>
+{% endmacro %}
+
+{% macro status_pill(status) %}
+{% set tone = {
+  "delivered": "pill-success",
+  "sla_breach": "pill-danger",
+  "cancelled": "pill-muted",
+  "refunded": "pill-muted",
+  "pending_payment": "pill-warning",
+  "paid_escrow": "pill-primary",
+  "packing": "pill-primary",
+  "packed": "pill-accent",
+  "dispatched": "pill-accent",
+  "en_route": "pill-accent"
+} %}
+<span class="pill {{ tone.get(status, "") }}">{{ ORDER_STATUS_LABELS.get(status, status) }}</span>
+{% endmacro %}
+
+{% macro mode_banner(modes, kind="gateway") %}
+{% set any_live = modes.values() | selectattr("live") | list | length > 0 %}
+<div class="mode-banner {{ 'is-live' if any_live else '' }}">
+  <strong>{{ "Live" if any_live else "Sandbox" }} {{ kind }} mode.</strong>
+  <span>
+    {%- for name, spec in modes.items() -%}
+      {{ spec.label }}:{{ spec.mode }}{{ ", " if not loop.last }}
+    {%- endfor -%}
+  </span>
+</div>
+{% endmacro %}
+
+{% macro escrow_pin(pin, reveal=False) %}
+<div class="pin-module">
+  <div class="uppercase tiny">Delivery PIN · release escrow on handover</div>
+  <div class="pin-value {{ '' if reveal else 'pin-hidden' }}">{{ pin if reveal else "••••" }}</div>
+  <p class="pin-warning">
+    Give this code to the courier only when your basket is in your hands. It is the
+    key that releases the merchant and rider payouts.
+  </p>
+  {% if reveal %}
+    <button class="btn btn-ghost btn-sm" type="button" data-copy="{{ pin }}">Copy PIN</button>
+  {% endif %}
+</div>
+{% endmacro %}

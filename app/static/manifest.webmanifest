@@ -1,0 +1,38 @@
+{
+  "name": "NaijaBasket — Groceries, delivered in minutes",
+  "short_name": "NaijaBasket",
+  "description": "Order household baskets from vetted Lagos supermarkets with 15-minute store SLAs and PIN-verified escrow release.",
+  "start_url": "/catalog",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F8F9FA",
+  "theme_color": "#212529",
+  "categories": ["shopping", "food", "business"],
+  "icons": [
+    {
+      "src": "/static/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "My basket",
+      "url": "/checkout",
+      "description": "Resume your basket and check out"
+    },
+    {
+      "name": "Track an order",
+      "url": "/orders",
+      "description": "Follow a live delivery"
+    }
+  ]
+}

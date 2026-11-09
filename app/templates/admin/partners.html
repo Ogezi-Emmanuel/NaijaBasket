@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Partner governance{% endblock %}
+{% block content %}
+
+<div class="row-between">
+  <div>
+    <span class="eyebrow">Platform governance</span>
+    <h1 class="mb-0">Partner stores</h1>
+    <p class="muted mb-0 small">
+      {{ rows|length }} partner(s) · SLA compliance {{ overview.compliance_rate|pct }}
+      against a {{ overview.target_minutes }}-minute picking target
+    </p>
+  </div>
+  <div class="btn-row">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.dashboard') }}">Console</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.finance') }}">Finance</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.orders') }}">Orders</a>
+  </div>
+</div>
+
+<section class="grid grid-4 mt-3">
+  <div class="kpi kpi-primary">
+    <div class="kpi-label">Platform compliance</div>
+    <div class="kpi-value">{{ overview.compliance_rate|pct }}</div>
+    <div class="kpi-sub">{{ overview.orders_met }}/{{ overview.orders_paid }} paid order(s) packed in time</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Breaches</div>
+    <div class="kpi-value">{{ overview.orders_breached }}</div>
+    <div class="kpi-sub">past the {{ overview.target_minutes }} min window</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Transit target</div>
+    <div class="kpi-value">{{ overview.transit_target_minutes }} min</div>
+    <div class="kpi-sub">dispatch → handover</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Active partners</div>
+    <div class="kpi-value">{{ stores|selectattr('is_active')|list|length }}/{{ stores|length }}</div>
+    <div class="kpi-sub">online for order routing</div>
+  </div>
+</section>
+
+<section class="stack mt-3">
+  {% for row in rows %}
+    {% set store = row.store %}
+    <article class="card card-pad">
+      <div class="card-title">
+        <div>
+          <h2 class="mb-0">{{ store.name }}</h2>
+          <p class="muted small mb-0">
+            {{ store.address or 'Address on file' }}
+            {% if store.mayor_market %} · {{ store.mayor_market }}{% endif %}
+            · {{ "%.4f"|format(store.gps_latitude) }}, {{ "%.4f"|format(store.gps_longitude) }}
+          </p>
+        </div>
+        <div class="btn-row">
+          <span class="pill {{ 'pill-success' if store.is_active else 'pill-muted' }}">{{ 'Online' if store.is_active else 'Offline' }}</span>
+          <span class="pill {{ 'pill-success' if store.nafdac_compliant else 'pill-danger' }}">{{ 'NAFDAC compliant' if store.nafdac_compliant else 'NAFDAC gap' }}</span>
+          <span class="pill {{ 'pill-danger' if row.breach_rate > 15 else ('pill-warning' if row.breach_rate > 0 else 'pill-success') }}">{{ row.breach_rate|pct }} breach</span>
+        </div>
+      </div>
+
+      <div class="grid grid-4 mt-2">
+        <div class="kpi">
+          <div class="kpi-label">SLA rating</div>
+          <div class="kpi-value" style="font-size:1.2rem">{{ row.sla_rating }}</div>
+          <div class="kpi-sub">/ 100</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Avg pick time</div>
+          <div class="kpi-value" style="font-size:1.2rem">{{ row.avg_pick_minutes if row.avg_pick_minutes is not none else '—' }}</div>
+          <div class="kpi-sub">minutes</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Completed picks</div>
+          <div class="kpi-value" style="font-size:1.2rem">{{ row.orders_completed }}</div>
+          <div class="kpi-sub">{{ row.orders_breached }} breach(es)</div>
+        </div>
+        <div class="kpi kpi-dark">
+          <div class="kpi-label">GMV routed</div>
+          <div class="kpi-value" style="font-size:1.2rem">{{ row.gmv|naira }}</div>
+          <div class="kpi-sub">{{ product_counts.get(store.id, 0) }} SKU(s)</div>
+        </div>
+      </div>
+
+      <div class="grid grid-2 mt-2">
+        <form class="stack" method="post" action="{{ url_for('admin.update_partner', store_id=store.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="field-row">
+            <label class="field">
+              <span>Commission rate (%)</span>
+              <input type="number" name="commission_rate" step="0.1" min="3" max="8"
+                     value="{{ '%.1f'|format(store.commission_rate * 100) }}">
+            </label>
+            <label class="field">
+              <span>Picking SLA (minutes)</span>
+              <input type="number" name="sla_target_minutes" step="1" min="5"
+                     value="{{ store.sla_target_minutes }}">
+            </label>
+          </div>
+          <p class="tiny faint mb-0">
+            Take rates are contractual and clamped to the 3%–8% band server-side.
+          </p>
+          <div class="btn-row">
+            <button class="btn btn-primary btn-sm" type="submit">Save changes</button>
+            <button class="btn btn-ghost btn-sm" type="submit" name="toggle_active" value="1">
+              {{ 'Take offline' if store.is_active else 'Bring online' }}
+            </button>
+          </div>
+        </form>
+
+        <div class="stack">
+          <form method="post" action="{{ url_for('admin.recompute_rating', store_id=store.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-ghost btn-block btn-sm" type="submit">Recompute SLA rating</button>
+          </form>
+          <form method="post" action="{{ url_for('admin.sla_sweep') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-ghost btn-block btn-sm" type="submit">Run SLA sweep now</button>
+          </form>
+          <p class="tiny faint mb-0">
+            Sweeps escalate live orders past the picking deadline and log a breach event.
+          </p>
+        </div>
+      </div>
+    </article>
+  {% else %}
+    <div class="empty card card-pad">
+      <h3>No partner stores yet</h3>
+      <p class="muted mb-0">Seed the database to load the Greater Lagos partner network.</p>
+    </div>
+  {% endfor %}
+</section>
+
+{% endblock %}

@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% from "_macros.html" import suggestion_card, product_image, img_fallback %}
+{% block title %}Your basket{% endblock %}
+{% block content %}
+
+<div class="sidebar-layout">
+  <div class="stack">
+    <div class="row-between">
+      <div>
+        <h1 class="mb-0">Your basket</h1>
+        <p class="muted mb-0 small">
+          {% if store %}{{ store.name }} · {{ store.sla_rating|round(1) }} SLA rating{% else %}No partner selected yet{% endif %}
+          {% if distance_km is not none %} · {{ distance_km }} km away{% endif %}
+        </p>
+      </div>
+      {% if cart and cart.items %}
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('storefront.catalog') }}">Keep shopping</a>
+      {% endif %}
+    </div>
+
+    <div class="minimum-bar {{ 'is-met' if minimum.met }}">
+      <div class="row-between">
+        <strong>
+          {% if minimum.met %}
+            Minimum met — your basket is checkout-ready
+          {% else %}
+            {{ minimum.shortfall|naira }} to go before you can check out
+          {% endif %}
+        </strong>
+        <span class="small muted">{{ minimum.subtotal|naira }} / {{ minimum.minimum|naira }} minimum</span>
+      </div>
+      <div class="progress progress-lg mt-1">
+        <div class="progress-bar {{ 'is-met' if minimum.met }}" style="width: {{ minimum.progress_pct }}%"></div>
+      </div>
+      <div class="row-between mt-1">
+        <span class="tiny faint">Target basket {{ minimum.target_aov|naira }} · you are at {{ minimum.aov_progress_pct }}%</span>
+        {% if store %}<span class="tiny faint">Take rate {{ (store.commission_rate * 100)|pct }}</span>{% endif %}
+      </div>
+    </div>
+
+    {% if distance_km is not none and not within_radius %}
+      <div class="alert alert-danger">
+        This partner sits outside the {{ NB.delivery_radius_km }} km delivery radius
+        ({{ distance_km }} km). Choose a closer store from the catalogue.
+      </div>
+    {% endif %}
+
+    {% if cart and cart.items %}
+      <section class="card card-pad">
+        {% for item in cart.items %}
+          {% set product = item.product %}
+          <div class="basket-line">
+            <img class="basket-thumb"
+                 src="{{ product_image(product) }}" {{ img_fallback() }}
+                 alt="{{ product.name }}" loading="lazy">
+            <div>
+              <div class="strong">{{ product.name }}</div>
+              <div class="tiny faint">
+                {{ CATEGORY_LABELS.get(product.category, product.category) }}
+                · {{ item.line_total|naira }} <span class="faint">({{ product.price|naira }} each)</span>
+              </div>
+              <span class="safety-flag mt-1" data-lane="{{ item.safety_category }}">{{ SAFETY_LABELS.get(item.safety_category, '') }}</span>
+            </div>
+            <div class="text-right">
+              <div class="qty-control">
+                <button class="qty-btn" type="button" aria-label="Reduce quantity"
+                        data-qty-delta="{{ product.id }}" data-delta="-1">−</button>
+                <span class="qty-value" data-qty-value="{{ product.id }}">{{ item.quantity }}</span>
+                <button class="qty-btn" type="button" aria-label="Increase quantity"
+                        data-qty-delta="{{ product.id }}" data-delta="1">+</button>
+              </div>
+              <button class="link-danger" type="button" data-remove-product="{{ product.id }}">Remove</button>
+            </div>
+          </div>
+        {% endfor %}
+      </section>
+    {% else %}
+      <div class="empty">
+        <h3>Your basket is empty</h3>
+        <p class="muted">The floor is {{ NB.min_order_value|naira }}. Fill it once and your whole month's run is handled.</p>
+        <a class="btn btn-primary" href="{{ url_for('storefront.catalog') }}">Browse the catalogue</a>
+      </div>
+    {% endif %}
+
+    {% if suggestions %}
+      <section class="mt-2">
+        <div class="card-title">
+          <h2>Closes the gap</h2>
+          <span class="pill pill-accent">Smart add-ons</span>
+        </div>
+        <div class="grid grid-cards">
+          {% for suggestion in suggestions %}{{ suggestion_card(suggestion) }}{% endfor %}
+        </div>
+      </section>
+    {% endif %}
+  </div>
+
+  <aside class="stack">
+    <section class="card card-pad">
+      <h3>Order summary</h3>
+      <ul class="summary-list">
+        <li><span>Basket subtotal</span><span>{{ minimum.subtotal|naira2 }}</span></li>
+        <li><span>Platform service fee <span class="tiny faint">(settled from the order)</span></span><span>{{ economics.convenience_fee|naira2 }}</span></li>
+        {% if cart and cart.recovery_discount %}
+          <li><span>Recovery discount</span><span>−{{ cart.recovery_discount|naira2 }}</span></li>
+        {% endif %}
+        <li><span>Estimated courier fare</span><span class="muted small">quoted at dispatch</span></li>
+        <li><span>Partner take ({{ (store.commission_rate * 100)|pct if store else '—' }})</span><span>{{ economics.commission_amount|naira2 }}</span></li>
+        <li class="is-total"><span>You pay now</span><span>{{ minimum.subtotal|naira2 }}</span></li>
+      </ul>
+      <div class="note note-primary mt-2">
+        Funds are held in escrow. They are released to the store and the courier only
+        after you hand over your 4-digit delivery PIN.
+      </div>
+    </section>
+
+    {% if cart and cart.items %}
+      <form class="card card-pad" method="post" action="{{ url_for('checkout.pay') }}" data-checkout-form>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <h3>Delivery &amp; payment</h3>
+
+        <div class="field">
+          <label class="label" for="address">Delivery address</label>
+          <textarea class="textarea" id="address" name="address" rows="3" required
+                    placeholder="Flat 4, Admiralty Way, Lekki Phase 1, Lagos">{{ default_address }}</textarea>
+          <div class="field-hint">Encrypted at rest. The courier receives it only at dispatch.</div>
+        </div>
+
+        <div class="grid grid-2" style="gap:10px">
+          <div class="field">
+            <label class="label" for="latitude">Latitude</label>
+            <input class="input mono" id="latitude" name="latitude" inputmode="decimal"
+                   value="{{ '%.6f'|format(current_user.gps_latitude) if current_user.gps_latitude is not none else '' }}" placeholder="6.524400">
+          </div>
+          <div class="field">
+            <label class="label" for="longitude">Longitude</label>
+            <input class="input mono" id="longitude" name="longitude" inputmode="decimal"
+                   value="{{ '%.6f'|format(current_user.gps_longitude) if current_user.gps_longitude is not none else '' }}" placeholder="3.379200">
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label" for="delivery_window">Delivery window</label>
+          <select class="select" id="delivery_window" name="delivery_window">
+            <option value="asap">As soon as possible</option>
+            <option value="morning">Tomorrow morning (8am–12pm)</option>
+            <option value="evening">Tomorrow evening (4pm–8pm)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <span class="label">Payment method</span>
+          <div class="choice-grid">
+            {% for key, spec in channels.items() %}
+              <label class="choice">
+                <input type="radio" name="channel" value="{{ key }}" {{ 'checked' if loop.first }}>
+                <span class="choice-body">
+                  <strong>{{ spec.label }}</strong>
+                  <span>{{ spec.hint }}</span>
+                  <span class="tiny faint">via {{ NB.gateways.get(spec.gateway, {}).get('label', spec.gateway) }} · {{ NB.gateways.get(spec.gateway, {}).get('mode', 'sandbox') }}</span>
+                </span>
+              </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-lg btn-block" type="submit">
+          Pay {{ minimum.subtotal|naira }} into escrow
+        </button>
+        <p class="tiny faint text-center mt-1 mb-0">
+          The {{ NB.min_order_value|naira }} minimum and all totals are re-validated on the server.
+        </p>
+      </form>
+    {% endif %}
+
+    {% if cart and cart.recovery_token %}
+      <form class="card card-pad" method="post" action="{{ url_for('checkout.apply_recovery_token') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <h3>Recovery code</h3>
+        <p class="small muted">Sent to you on WhatsApp {{ cart.recovery_sent_at|timeago }}. It waives part of the platform fee.</p>
+        <div class="row">
+          <input class="input mono" name="token" placeholder="{{ cart.recovery_token[:4] }}••••" required>
+          <button class="btn btn-ghost" type="submit">Apply</button>
+        </div>
+      </form>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const lat = document.getElementById("latitude");
+    const lng = document.getElementById("longitude");
+    if (!lat || !lng || lat.value || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition((position) => {
+      lat.value = position.coords.latitude.toFixed(6);
+      lng.value = position.coords.longitude.toFixed(6);
+    });
+  });
+</script>
+{% endblock %}

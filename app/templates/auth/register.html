@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Create your account{% endblock %}
+{% block content %}
+<div class="sidebar-layout">
+  <section class="card card-pad">
+    <div class="card-title">
+      <h2>Create your basket</h2>
+      <span class="pill pill-primary">Consumers only</span>
+    </div>
+    <p class="muted small">
+      Partner supermarkets and platform staff are provisioned internally, so every
+      listing you see has cleared NAFDAC and quality vetting before it reaches you.
+    </p>
+
+    <form method="post" action="{{ url_for('auth.register', next=request.args.get('next')) }}" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="field">
+        <label class="label" for="name">Full name</label>
+        <input class="input {{ 'is-invalid' if errors.get('name') }}" id="name" name="name"
+               value="{{ form.get('name', '') }}" autocomplete="name" required>
+        {% if errors.get('name') %}<div class="field-error">{{ errors['name'] }}</div>{% endif %}
+      </div>
+
+      <div class="grid grid-2" style="gap:14px">
+        <div class="field">
+          <label class="label" for="email">Email</label>
+          <input class="input {{ 'is-invalid' if errors.get('email') }}" id="email" name="email" type="email"
+                 value="{{ form.get('email', '') }}" autocomplete="email" required>
+          {% if errors.get('email') %}<div class="field-error">{{ errors['email'] }}</div>{% endif %}
+        </div>
+        <div class="field">
+          <label class="label" for="phone">Mobile number</label>
+          <input class="input {{ 'is-invalid' if errors.get('phone') }}" id="phone" name="phone"
+                 value="{{ form.get('phone', '') }}" placeholder="0803 000 0000" autocomplete="tel" required>
+          {% if errors.get('phone') %}<div class="field-error">{{ errors['phone'] }}</div>{% endif %}
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="label" for="address">Delivery address <span class="faint">(optional now, needed at checkout)</span></label>
+        <textarea class="textarea" id="address" name="address" rows="2"
+                  placeholder="Flat 4, Admiralty Way, Lekki Phase 1, Lagos">{{ form.get('address', '') }}</textarea>
+        <div class="field-hint">Encrypted with AES-256-GCM at rest under NDPA 2023.</div>
+      </div>
+
+      <div class="grid grid-2" style="gap:14px">
+        <div class="field">
+          <label class="label" for="password">Password</label>
+          <input class="input {{ 'is-invalid' if errors.get('password') }}" id="password" name="password"
+                 type="password" autocomplete="new-password" required>
+          {% if errors.get('password') %}<div class="field-error">{{ errors['password'] }}</div>{% endif %}
+        </div>
+        <div class="field">
+          <label class="label" for="confirm_password">Confirm password</label>
+          <input class="input {{ 'is-invalid' if errors.get('confirm_password') }}" id="confirm_password"
+                 name="confirm_password" type="password" autocomplete="new-password" required>
+          {% if errors.get('confirm_password') %}<div class="field-error">{{ errors['confirm_password'] }}</div>{% endif %}
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-lg btn-block" type="submit">Create account</button>
+    </form>
+  </section>
+
+  <aside class="stack">
+    <div class="card card-pad">
+      <h3>What you get</h3>
+      <ul class="data-list">
+        <li><span class="dl-key">Minimum basket</span><span class="dl-val">{{ NB.min_order_value|naira }}</span></li>
+        <li><span class="dl-key">Partner picking SLA</span><span class="dl-val">{{ NB.merchant_sla_minutes }} min</span></li>
+        <li><span class="dl-key">Last-mile transit</span><span class="dl-val">{{ NB.transit_sla_minutes }} min</span></li>
+        <li><span class="dl-key">Delivery radius</span><span class="dl-val">{{ NB.delivery_radius_km }} km</span></li>
+      </ul>
+    </div>
+    <div class="note note-primary">
+      Your money sits in escrow until you hand the courier your 4-digit PIN. The merchant
+      is only paid after your basket is in your hands.
+    </div>
+    <p class="small muted">Already stocked up with us? <a href="{{ url_for('auth.login') }}">Sign in instead</a>.</p>
+  </aside>
+</div>
+{% endblock %}

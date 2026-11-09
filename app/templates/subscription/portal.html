@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% from "_macros.html" import mode_banner %}
+{% block title %}Subscription pass{% endblock %}
+{% block content %}
+
+<div class="row-between">
+  <div>
+    <span class="eyebrow">Recurring baskets</span>
+    <h1 class="mb-0">Subscription pass</h1>
+    <p class="muted mb-0 small">
+      A pass spreads its price across the baskets you place, so every checkout carries a
+      recognised revenue allocation instead of a one-off fee.
+    </p>
+  </div>
+</div>
+
+{{ mode_banner(gateway_modes, "gateway") }}
+
+{% if active %}
+  <section class="card card-dark card-pad mt-3">
+    <div class="row-between">
+      <div>
+        <span class="eyebrow">Active</span>
+        <h2 class="mb-0">{{ plans.get(active.plan, {}).get('label', active.plan|capitalize) }}</h2>
+        <p class="small mb-0">
+          Started {{ active.started_at.strftime('%d %b %Y') }} · renews {{ active.expires_at.strftime('%d %b %Y') }}
+        </p>
+      </div>
+      <div class="text-right">
+        <div class="kpi-value">{{ active.price|naira }}</div>
+        <div class="kpi-sub">reference <span class="mono tiny">{{ active.reference or '—' }}</span></div>
+      </div>
+    </div>
+  </section>
+{% endif %}
+
+<div class="sidebar-layout mt-3">
+  <div class="stack">
+    <section>
+      <h2>Choose a pass</h2>
+      <div class="grid grid-2">
+        {% for key, spec in plans.items() %}
+          <article class="card card-pad {{ 'card-primary' if loop.first }}">
+            <div class="row-between">
+              <h3 class="mb-0">{{ spec.label }}</h3>
+              {% if key == 'annual' %}<span class="pill pill-accent">2 months free</span>{% endif %}
+            </div>
+            <div class="price mt-1" style="font-size:1.7rem">{{ prices[key]|naira }}<span class="price-unit">/pass</span></div>
+            <p class="small muted">{{ spec.months }} month(s) of coverage.</p>
+            <ul class="data-list">
+              <li><span class="dl-key">Coverage</span><span class="dl-val">{{ spec.months }} month(s)</span></li>
+              <li><span class="dl-key">Recognised per order</span><span class="dl-val">{{ (prices[key] / 10)|naira2 }}</span></li>
+              <li><span class="dl-key">Multiplier</span><span class="dl-val">×{{ spec.multiplier|round(1) }}</span></li>
+            </ul>
+            <form method="post" action="{{ url_for('subscription.purchase') }}" class="mt-2">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="plan" value="{{ key }}">
+              <div class="field">
+                <label class="label" for="gateway-{{ key }}">Pay with</label>
+                <select class="select" id="gateway-{{ key }}" name="gateway">
+                  {% for name, spec_gateway in gateway_modes.items() %}
+                    <option value="{{ name }}">{{ spec_gateway.label }} · {{ spec_gateway.mode }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <button class="btn btn-primary btn-block" type="submit">Activate {{ spec.label }}</button>
+            </form>
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="card card-pad">
+      <h2>Pass history</h2>
+      {% if history %}
+        <div class="table-wrap">
+          <table class="table table-sm">
+            <thead><tr><th>Plan</th><th>Status</th><th>Started</th><th>Expires</th><th class="num">Price</th></tr></thead>
+            <tbody>
+              {% for row in history %}
+                <tr>
+                  <td>{{ plans.get(row.plan, {}).get('label', row.plan|capitalize) }}</td>
+                  <td>
+                    <span class="pill {{ 'pill-success' if row.status == 'active' else ('pill-warning' if row.status == 'pending' else 'pill-danger') }}">{{ row.status }}</span>
+                  </td>
+                  <td class="muted small">{{ row.started_at.strftime('%d %b %Y') }}</td>
+                  <td class="muted small">{{ row.expires_at.strftime('%d %b %Y') }}</td>
+                  <td class="num">{{ row.price|naira }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="muted small mb-0">No passes purchased yet.</p>
+      {% endif %}
+    </section>
+  </div>
+
+  <aside class="stack">
+    <section class="card card-pad">
+      <h3>Your numbers</h3>
+      <ul class="data-list">
+        <li><span class="dl-key">Pass state</span><span class="dl-val">{{ 'Active' if current_user.subscription_active else 'Inactive' }}</span></li>
+        <li><span class="dl-key">Orders delivered</span><span class="dl-val">{{ orders_delivered }}</span></li>
+        <li><span class="dl-key">Allocation per order</span><span class="dl-val">{{ per_order_allocation|naira2 }}</span></li>
+        <li><span class="dl-key">Minimum basket</span><span class="dl-val">{{ NB.min_order_value|naira }}</span></li>
+      </ul>
+    </section>
+
+    {% if active %}
+      <section class="card card-pad">
+        <h3>Cancel pass</h3>
+        <p class="small muted">You keep access until {{ active.expires_at.strftime('%d %b %Y') }}. No further charge.</p>
+        <form method="post" action="{{ url_for('subscription.cancel') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-ghost btn-block" type="submit">Cancel subscription</button>
+        </form>
+      </section>
+    {% endif %}
+
+    <div class="note note-accent">
+      With no live gateway keys configured, passes activate immediately in sandbox mode so
+      the allocation logic can be reviewed end to end.
+    </div>
+  </aside>
+</div>
+
+{% endblock %}

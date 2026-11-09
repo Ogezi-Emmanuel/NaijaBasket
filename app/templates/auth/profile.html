@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Your profile{% endblock %}
+{% block content %}
+<div class="sidebar-layout">
+  <section class="card card-pad">
+    <div class="card-title">
+      <h2>Delivery details</h2>
+      <span class="pill pill-primary">{{ current_user.user_type|capitalize }}</span>
+    </div>
+
+    <form method="post" action="{{ url_for('auth.profile') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="grid grid-2" style="gap:14px">
+        <div class="field">
+          <label class="label" for="name">Full name</label>
+          <input class="input" id="name" name="name" value="{{ current_user.name }}" autocomplete="name" required>
+        </div>
+        <div class="field">
+          <label class="label" for="phone">Mobile number</label>
+          <input class="input" id="phone" name="phone" value="{{ current_user.phone }}"
+                 placeholder="0803 000 0000" autocomplete="tel" required>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="label" for="email">Email <span class="faint">(locked to your account)</span></label>
+        <input class="input" id="email" value="{{ current_user.email }}" disabled>
+      </div>
+
+      <div class="field">
+        <label class="label" for="address">Delivery address</label>
+        <textarea class="textarea" id="address" name="address" rows="2"
+                  placeholder="Flat 4, Admiralty Way, Lekki Phase 1, Lagos">{{ current_user.address or '' }}</textarea>
+        <div class="field-hint">Stored encrypted (AES-256-GCM). Only the assigned courier sees it at dispatch.</div>
+      </div>
+
+      <div class="grid grid-2" style="gap:14px">
+        <div class="field">
+          <label class="label" for="latitude">Latitude</label>
+          <input class="input mono" id="latitude" name="latitude"
+                 value="{{ '%.6f'|format(current_user.gps_latitude) if current_user.gps_latitude is not none else '' }}"
+                 placeholder="6.524400">
+        </div>
+        <div class="field">
+          <label class="label" for="longitude">Longitude</label>
+          <input class="input mono" id="longitude" name="longitude"
+                 value="{{ '%.6f'|format(current_user.gps_longitude) if current_user.gps_longitude is not none else '' }}"
+                 placeholder="3.379200">
+        </div>
+      </div>
+      <div class="field-hint mb-2">Pin your coordinates so we can confirm you sit inside the {{ NB.delivery_radius_km }} km delivery radius.</div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" type="submit">Save changes</button>
+        <button class="btn btn-ghost" type="button" data-locate>Use my current location</button>
+      </div>
+    </form>
+  </section>
+
+  <aside class="stack">
+    <div class="card card-pad">
+      <h3>Account</h3>
+      <ul class="data-list">
+        <li><span class="dl-key">Basket</span><span class="dl-val">{{ cart_count }} item(s)</span></li>
+        <li><span class="dl-key">Subscription pass</span>
+            <span class="dl-val">{{ "Active" if current_user.subscription_active else "None" }}</span></li>
+        {% if current_user.subscription_expires_at %}
+          <li><span class="dl-key">Pass expires</span><span class="dl-val">{{ current_user.subscription_expires_at.strftime('%d %b %Y') }}</span></li>
+        {% endif %}
+        <li><span class="dl-key">Member since</span><span class="dl-val">{{ current_user.created_at.strftime('%d %b %Y') }}</span></li>
+      </ul>
+      <div class="btn-row mt-3">
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('orders.index') }}">My orders</a>
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('subscription.portal') }}">Subscription</a>
+      </div>
+    </div>
+
+    {% if current_user.is_merchant and current_user.store %}
+      <div class="card card-primary card-pad">
+        <h3>{{ current_user.store.name }}</h3>
+        <ul class="data-list">
+          <li><span class="dl-key">SLA target</span><span class="dl-val">{{ current_user.store.sla_target_minutes }} min</span></li>
+          <li><span class="dl-key">Take rate</span><span class="dl-val">{{ (current_user.store.commission_rate * 100)|pct }}</span></li>
+          <li><span class="dl-key">SLA rating</span><span class="dl-val">{{ current_user.store.sla_rating|round(1) }}</span></li>
+        </ul>
+        <a class="btn btn-primary btn-sm btn-block mt-2" href="{{ url_for('merchant.dashboard') }}">Open the OMS</a>
+      </div>
+    {% endif %}
+
+    <div class="card card-pad">
+      <h3>Session</h3>
+      <form method="post" action="{{ url_for('auth.logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-ghost btn-block" type="submit">Sign out</button>
+      </form>
+    </div>
+
+    <div class="note">
+      Role permissions in this build: <span class="mono">{{ roles|join(', ') }}</span>. Merchants are
+      hard-scoped to their own store; only admins may inspect across partners.
+    </div>
+  </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.querySelector("[data-locate]")?.addEventListener("click", () => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition((position) => {
+      document.getElementById("latitude").value = position.coords.latitude.toFixed(6);
+      document.getElementById("longitude").value = position.coords.longitude.toFixed(6);
+      window.NB?.toast("Coordinates captured — remember to save", "accent");
+    });
+  });
+</script>
+{% endblock %}

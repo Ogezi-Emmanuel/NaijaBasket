@@ -1,0 +1,108 @@
+# Render blueprint for NaijaBasket.
+#
+# Deploy: push this repo, then "New > Blueprint" in Render and point it here.
+# It provisions the Docker web service, managed Postgres, and the two sweeps
+# that FR-02 and FR-06 depend on. Cloudflare then fronts the service
+# (proxied DNS + WAF + CDN).
+#
+# Docs: https://render.com/docs/blueprint-spec
+
+envVarGroups:
+  # Shared by the web service and both cron jobs, so SECRET_KEY and
+  # ENCRYPTION_KEY are identical everywhere (a mismatched ENCRYPTION_KEY would
+  # make stored addresses undecryptable).
+  - name: naijabasket-shared
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+
+      # Render generates this once for the whole group.
+      - key: SECRET_KEY
+        generateValue: true
+
+      # 64 hex chars:
+      #   python -c "import secrets;print(secrets.token_hex(32))"
+      # Rotating this makes every stored address permanently unreadable.
+      - key: ENCRYPTION_KEY
+        sync: false
+
+      # Error monitoring (optional). Without it, exceptions only reach the logs.
+      - key: SENTRY_DSN
+        sync: false
+
+      # Shared counter store for rate limits. Point this at a Render Key Value
+      # (Redis) instance so limits hold across gunicorn workers; blank falls
+      # back to per-process memory.
+      - key: RATELIMIT_STORAGE_URI
+        sync: false
+
+      # Payment gateways. Blank = deterministic sandbox, no real money moves.
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: PAYSTACK_PUBLIC_KEY
+        sync: false
+      - key: FLUTTERWAVE_SECRET_KEY
+        sync: false
+      - key: FLUTTERWAVE_PUBLIC_KEY
+        sync: false
+      - key: FLUTTERWAVE_WEBHOOK_HASH
+        sync: false
+
+      # 3PL dispatch. Blank = deterministic sandbox courier.
+      - key: KWIK_API_KEY
+        sync: false
+      - key: GOKADA_API_KEY
+        sync: false
+
+services:
+  - type: web
+    name: naijabasket
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    healthCheckPath: /api/health
+    # Applies pending migrations before traffic moves to the new release.
+    preDeployCommand: flask --app wsgi db upgrade
+    envVars:
+      - fromGroup: naijabasket-shared
+      - key: SESSION_COOKIE_SECURE
+        value: "1"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: naijabasket-db
+          property: connectionString
+
+  # FR-02: escalate partners who blow the 15-minute picking SLA.
+  - type: cron
+    name: naijabasket-sla-sweep
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    schedule: "* * * * *"
+    dockerCommand: flask --app wsgi sla-check
+    envVars:
+      - fromGroup: naijabasket-shared
+      - key: DATABASE_URL
+        fromDatabase:
+          name: naijabasket-db
+          property: connectionString
+
+  # FR-06: mint WhatsApp recovery links for carts idle > 30 minutes.
+  - type: cron
+    name: naijabasket-cart-recovery
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    schedule: "*/5 * * * *"
+    dockerCommand: flask --app wsgi cart-recovery
+    envVars:
+      - fromGroup: naijabasket-shared
+      - key: DATABASE_URL
+        fromDatabase:
+          name: naijabasket-db
+          property: connectionString
+
+databases:
+  - name: naijabasket-db
+    plan: basic-256mb
+    postgresMajorVersion: "16"

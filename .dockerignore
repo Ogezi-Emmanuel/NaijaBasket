@@ -1,0 +1,26 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+.git/
+.gitignore
+
+# Never ship local secrets or the dev database.
+.env
+.env.*
+!.env.example
+*.db
+*.sqlite3
+instance/
+
+# Not needed at runtime.
+tests/
+*.docx
+*.md
+
+Dockerfile
+.dockerignore
+Procfile
+render.yaml

@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_pill %}
+{% block title %}Order queue · {{ store.name }}{% endblock %}
+{% block body_attrs %}data-sla-warning-seconds="{{ (NB.merchant_sla_minutes * 60 * 0.2)|int }}"{% endblock %}
+{% block content %}
+
+<div class="row-between">
+  <div>
+    <h1 class="mb-0">Order queue</h1>
+    <p class="muted mb-0 small">{{ store.name }} · pick &amp; pack within {{ store.sla_target_minutes }} minutes of payment</p>
+  </div>
+  <div class="btn-row">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('merchant.dashboard') }}">Dashboard</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('merchant.dispatch_board') }}">Dispatch board</a>
+  </div>
+</div>
+
+<section class="mt-3">
+  <div class="card-title"><h2>Live queue</h2><span class="pill pill-warning">{{ live_orders|length }} awaiting pack</span></div>
+  {% if live_orders %}
+    <div class="card">
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr><th>Order</th><th>Paid</th><th class="num">Items</th><th class="num">Value</th><th>Time left</th><th>Lanes</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for order in live_orders %}
+              <tr data-sla-card>
+                <td class="mono">{{ order.order_number }}</td>
+                <td class="muted small nowrap">{{ order.paid_at|timeago }}</td>
+                <td class="num">{{ order.item_count }}</td>
+                <td class="num">{{ order.gmv_amount|naira }}</td>
+                <td><span class="sla-timer" data-countdown-seconds="{{ order.sla_seconds_remaining }}" data-state="{{ order.sla_state }}">--:--</span></td>
+                <td>
+                  {% if order.cross_contamination_risk %}
+                    <span class="pill pill-danger" data-sla-flag>Chemical + food</span>
+                  {% else %}
+                    <span class="pill" data-sla-flag>Standard</span>
+                  {% endif %}
+                </td>
+                <td class="text-right"><a class="btn btn-primary btn-sm" href="{{ url_for('merchant.order_detail', ref=order.order_number) }}">Pack</a></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% else %}
+    <div class="empty"><h3>Nothing waiting</h3><p class="muted">New paid orders appear here the moment escrow is funded.</p></div>
+  {% endif %}
+</section>
+
+<section class="mt-3">
+  <h2>Packed &amp; in transit</h2>
+  {% if packed_orders %}
+    <div class="card">
+      <div class="table-wrap">
+        <table class="table table-sm">
+          <thead><tr><th>Order</th><th>Packed</th><th>Status</th><th>Courier</th><th class="num">Value</th><th></th></tr></thead>
+          <tbody>
+            {% for order in packed_orders %}
+              {% set job = order.latest_dispatch %}
+              <tr>
+                <td class="mono">{{ order.order_number }}</td>
+                <td class="muted small nowrap">{{ order.packed_at|timeago }}</td>
+                <td>{{ status_pill(order.status) }}</td>
+                <td class="small">
+                  {% if job %}{{ job.provider }} · {{ job.rider_name or 'unassigned' }} <span class="faint">({{ job.mode }})</span>{% else %}<span class="faint">no job</span>{% endif %}
+                </td>
+                <td class="num">{{ order.gmv_amount|naira }}</td>
+                <td class="text-right"><a class="btn btn-ghost btn-sm" href="{{ url_for('merchant.order_detail', ref=order.order_number) }}">Open</a></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% else %}
+    <p class="muted small">No packed orders yet today.</p>
+  {% endif %}
+</section>
+
+<section class="mt-3">
+  <h2>Closed</h2>
+  {% if closed_orders %}
+    <div class="card">
+      <div class="table-wrap">
+        <table class="table table-sm">
+          <thead><tr><th>Order</th><th>Placed</th><th>Status</th><th class="num">Value</th><th></th></tr></thead>
+          <tbody>
+            {% for order in closed_orders %}
+              <tr>
+                <td class="mono">{{ order.order_number }}</td>
+                <td class="muted small nowrap">{{ order.created_at.strftime('%d %b %H:%M') }}</td>
+                <td>{{ status_pill(order.status) }}</td>
+                <td class="num">{{ order.gmv_amount|naira }}</td>
+                <td class="text-right"><a class="btn btn-ghost btn-sm" href="{{ url_for('merchant.order_detail', ref=order.order_number) }}">Open</a></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% else %}
+    <p class="muted small">No completed history for this store yet.</p>
+  {% endif %}
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/merchant.js') }}" defer></script>
+{% endblock %}

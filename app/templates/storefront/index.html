@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% from "_macros.html" import product_card %}
+{% block title %}Greater Lagos grocery, one basket{% endblock %}
+{% block content %}
+
+<section class="hero">
+  <img class="hero-media"
+       src="https://thumb.wikimedia.org/wikipedia/commons/thumb/7/70/Westside_Market_in_Manhattan%2C_NYC_IMG_5615.JPG/960px-Westside_Market_in_Manhattan%2C_NYC_IMG_5615.JPG"
+       alt="" aria-hidden="true">
+  <div class="hero-inner">
+    <span class="eyebrow">Greater Lagos · asset-light aggregation</span>
+    <h1>Skip the market run. Get your whole basket in one checkout.</h1>
+    <p>
+      NaijaBasket routes your order to vetted partner supermarkets, enforces a
+      {{ stats.merchant_sla }}-minute picking window, and hands the last mile to a
+      courier — with your money held in escrow until the PIN changes hands.
+    </p>
+    <div class="btn-row">
+      <a class="btn btn-primary btn-lg" href="{{ url_for('storefront.catalog') }}">Start a basket</a>
+      <a class="btn btn-ghost btn-lg" href="{{ url_for('storefront.how_it_works') }}">How it works</a>
+    </div>
+  </div>
+</section>
+
+<section class="grid grid-4 mt-3">
+  <div class="kpi kpi-primary">
+    <div class="kpi-label">Catalogue</div>
+    <div class="kpi-value">{{ stats.products }}</div>
+    <div class="kpi-sub">NAFDAC-checked listings</div>
+  </div>
+  <div class="kpi kpi-accent">
+    <div class="kpi-label">Partner stores</div>
+    <div class="kpi-value">{{ stats.partners }}</div>
+    <div class="kpi-sub">Across Lagos mainland &amp; island</div>
+  </div>
+  <div class="kpi kpi-dark">
+    <div class="kpi-label">Picking SLA</div>
+    <div class="kpi-value">{{ stats.merchant_sla }} min</div>
+    <div class="kpi-sub">Then auto-dispatch fires</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Delivered</div>
+    <div class="kpi-value">{{ stats.orders_delivered }}</div>
+    <div class="kpi-sub">{{ stats.radius_km }} km delivery radius</div>
+  </div>
+</section>
+
+<section class="card card-pad mt-3">
+  <div class="card-title">
+    <h2>Shop by aisle</h2>
+    <a class="small" href="{{ url_for('storefront.catalog') }}">See everything →</a>
+  </div>
+  <div class="grid grid-4">
+    {% for category in CATEGORIES %}
+      <a class="card card-pad" href="{{ url_for('storefront.catalog', category=category) }}">
+        <div class="kpi-label">{{ CATEGORY_LABELS[category] }}</div>
+        <div class="kpi-value" style="font-size:1.2rem">{{ counts.get(category, 0) }} items</div>
+        <div class="kpi-sub">
+          {% if category == 'fresh_produce' %}52% of platform GMV{% elif category == 'dry_goods' %}Pantry staples, sealed{% elif category == 'personal_care' %}Beauty &amp; hygiene lane{% else %}Sealed chemical lane{% endif %}
+        </div>
+      </a>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="mt-3">
+  <div class="row-between mb-2">
+    <h2 class="mb-0">Moving fastest this week</h2>
+    <a class="pill pill-primary" href="{{ url_for('storefront.catalog', sort='popular') }}">By popularity</a>
+  </div>
+  {% if featured %}
+    <div class="grid grid-cards">
+      {% for product in featured %}{{ product_card(product) }}{% endfor %}
+    </div>
+  {% else %}
+    <div class="empty">
+      <h3>No listings yet</h3>
+      <p class="muted">Run <span class="mono">flask seed</span> to load the demo catalogue, stores and orders.</p>
+    </div>
+  {% endif %}
+</section>
+
+<section class="card card-dark card-pad mt-3">
+  <div class="grid grid-2">
+    <div>
+      <span class="eyebrow">Escrow-protected</span>
+      <h2>Your money waits until your basket lands</h2>
+      <p>
+        Paying through the platform opens an escrow hold. The merchant and the rider
+        are only settled when you read your 4-digit delivery PIN to the courier.
+        Anything short of that and the funds come back to you.
+      </p>
+      <a class="btn btn-primary" href="{{ url_for('auth.register') }}">Create an account</a>
+    </div>
+    <div>
+      <h3>Partner stores on the platform</h3>
+      <ul class="data-list">
+        {% for store in stores %}
+          <li>
+            <span class="dl-key">{{ store.name }}<br><span class="tiny faint">{{ store.mayor_market or store.address or 'Lagos' }}</span></span>
+            <span class="dl-val">{{ store.sla_rating|round(1) }} SLA</span>
+          </li>
+        {% else %}
+          <li><span class="dl-key">No partners loaded yet</span><span class="dl-val">—</span></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

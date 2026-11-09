@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Inventory · {{ store.name }}{% endblock %}
+{% block content %}
+
+<div class="row-between">
+  <div>
+    <h1 class="mb-0">Inventory</h1>
+    <p class="muted mb-0 small">{{ products|length }} listing(s) at {{ store.name }} · NAFDAC enforced on food lines</p>
+  </div>
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('merchant.dashboard') }}">Dashboard</a>
+</div>
+
+<div class="note note-primary mt-2">
+  Food and fresh-produce listings cannot be saved without a valid NAFDAC registration
+  number (format like <span class="mono">A1-1234</span>). Household cleaners do not require one.
+</div>
+
+<section class="card mt-2">
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Aisle</th>
+          <th>NAFDAC</th>
+          <th class="num">Stock</th>
+          <th class="num">Price</th>
+          <th>State</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for product in products %}
+          <tr>
+            <td>
+              <div class="strong">{{ product.name }}</div>
+              <div class="tiny faint mono">{{ product.sku or '—' }} · {{ product.unit }}</div>
+            </td>
+            <td>
+              <span class="safety-flag" data-lane="{{ product.safety_category }}">{{ CATEGORY_LABELS.get(product.category, product.category) }}</span>
+            </td>
+            <td>
+              {% if product.requires_nafdac %}
+                <span class="verify-badge {{ '' if product.nafdac_reg_no else 'is-missing' }}">{{ product.nafdac_reg_no or 'required' }}</span>
+              {% else %}
+                <span class="faint small">n/a</span>
+              {% endif %}
+            </td>
+            <td class="num">
+              <span class="pill {{ 'pill-danger' if product.stock_qty <= 4 else ('pill-warning' if product.stock_qty <= 12 else 'pill-success') }}">{{ product.stock_qty }}</span>
+            </td>
+            <td class="num">{{ product.price|naira2 }}</td>
+            <td>
+              <span class="pill {{ 'pill-success' if product.is_active else 'pill-danger' }}">{{ 'Listed' if product.is_active else 'Hidden' }}</span>
+              {% if not product.in_stock %}<span class="pill pill-warning">Out of stock</span>{% endif %}
+            </td>
+            <td class="text-right">
+              <button class="btn btn-ghost btn-sm" type="button"
+                      onclick="document.getElementById('edit-{{ product.id }}').toggleAttribute('hidden')">Edit</button>
+            </td>
+          </tr>
+          <tr id="edit-{{ product.id }}" hidden>
+            <td colspan="7">
+              <form method="post" action="{{ url_for('merchant.update_inventory', product_id=product.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="grid grid-4" style="gap:12px">
+                  <div class="field mb-0">
+                    <label class="label" for="stock-{{ product.id }}">Stock quantity</label>
+                    <input class="input" id="stock-{{ product.id }}" name="stock_qty" type="number" min="0" value="{{ product.stock_qty }}">
+                  </div>
+                  <div class="field mb-0">
+                    <label class="label" for="price-{{ product.id }}">Price (NGN)</label>
+                    <input class="input" id="price-{{ product.id }}" name="price" type="number" step="0.01" min="0" value="{{ product.price }}">
+                  </div>
+                  <div class="field mb-0">
+                    <label class="label" for="nafdac-{{ product.id }}">NAFDAC number</label>
+                    <input class="input mono" id="nafdac-{{ product.id }}" name="nafdac_reg_no"
+                           value="{{ product.nafdac_reg_no or '' }}" placeholder="A1-1234"
+                           {{ 'required' if product.requires_nafdac }}>
+                  </div>
+                  <div class="field mb-0">
+                    <span class="label">Visibility</span>
+                    <label class="row small" style="gap:8px">
+                      <input type="checkbox" name="toggle_active" value="1">
+                      Flip listing state (currently {{ 'listed' if product.is_active else 'hidden' }})
+                    </label>
+                  </div>
+                </div>
+                <div class="btn-row mt-2">
+                  <button class="btn btn-primary btn-sm" type="submit">Save changes</button>
+                  <button class="btn btn-ghost btn-sm" type="button"
+                          onclick="document.getElementById('edit-{{ product.id }}').setAttribute('hidden','')">Cancel</button>
+                </div>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if not products %}
+    <div class="empty"><h3>No listings yet</h3><p class="muted">This store has no products in the catalogue.</p></div>
+  {% endif %}
+</section>
+
+{% endblock %}

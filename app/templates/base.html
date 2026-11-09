@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% block title %}Greater Lagos grocery, one basket{% endblock %} · NaijaBasket</title>
+  <meta name="description" content="NaijaBasket aggregates Greater Lagos partner supermarkets into one basket, with a 15-minute picking SLA and PIN-verified escrow delivery.">
+  <meta name="theme-color" content="#212529">
+  <meta name="color-scheme" content="light">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='icons/icon.svg') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon.svg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}" {% block body_attrs %}{% endblock %}>
+
+<div id="offline-bar" class="offline-bar">Offline — showing your last saved catalogue. Basket changes resume when you reconnect.</div>
+
+<header class="topbar">
+  <div class="shell topbar-inner">
+    <a class="brand" href="{{ url_for('storefront.index') }}">
+      <span class="brand-mark" aria-hidden="true">NB</span>
+      NaijaBasket
+      <span class="brand-tag">Lagos</span>
+    </a>
+
+    <nav class="nav" aria-label="Primary">
+      <a class="nav-link {{ 'is-active' if request.endpoint == 'storefront.catalog' }}" href="{{ url_for('storefront.catalog') }}">Catalogue</a>
+      <a class="nav-link {{ 'is-active' if request.endpoint == 'storefront.how_it_works' }}" href="{{ url_for('storefront.how_it_works') }}">How it works</a>
+      {% if current_user.is_authenticated %}
+        <a class="nav-link {{ 'is-active' if request.blueprint == 'orders' }}" href="{{ url_for('orders.index') }}">My orders</a>
+        <a class="nav-link {{ 'is-active' if request.blueprint == 'subscription' }}" href="{{ url_for('subscription.portal') }}">Pass</a>
+      {% endif %}
+      {% if current_user.is_authenticated and current_user.is_merchant %}
+        <a class="nav-link {{ 'is-active' if request.blueprint == 'merchant' }}" href="{{ url_for('merchant.dashboard') }}">OMS</a>
+      {% endif %}
+      {% if current_user.is_authenticated and current_user.is_admin %}
+        <a class="nav-link {{ 'is-active' if request.blueprint == 'admin' }}" href="{{ url_for('admin.dashboard') }}">Console</a>
+      {% endif %}
+    </nav>
+
+    <form class="search-form" method="get" action="{{ url_for('storefront.catalog') }}" role="search">
+      <label class="sr-only" for="topbar-search">Search the catalogue</label>
+      <input class="search-input" id="topbar-search" type="search" name="q"
+             value="{{ request.args.get('q', '') }}" placeholder="Search rice, tomatoes, detergent…">
+    </form>
+
+    <div class="topbar-actions">
+      <a class="cart-chip" href="{{ url_for('checkout.basket') }}" aria-label="Basket">
+        Basket
+        <span class="cart-badge" data-cart-badge {% if cart_count <= 0 %}hidden{% endif %}>{{ cart_count }}</span>
+      </a>
+      {% if current_user.is_authenticated %}
+        <a class="avatar" href="{{ url_for('auth.profile') }}" title="{{ current_user.name }}">{{ current_user.initials }}</a>
+      {% else %}
+        <a class="btn btn-primary btn-sm" href="{{ url_for('auth.login') }}">Sign in</a>
+      {% endif %}
+    </div>
+  </div>
+</header>
+
+<main class="page">
+  <div class="shell">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-stack">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ 'danger' if category == 'error' else category }}" role="status">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </div>
+</main>
+
+{% block after_main %}{% endblock %}
+
+<footer class="footer">
+  <div class="shell">
+    <div class="footer-grid">
+      <div>
+        <h4>NaijaBasket</h4>
+        <p class="mb-0">An asset-light grocery aggregator connecting Greater Lagos households to vetted partner supermarkets, with automated 3PL dispatch and escrow-protected payment.</p>
+      </div>
+      <div>
+        <h4>Shop</h4>
+        <ul>
+          <li><a href="{{ url_for('storefront.catalog') }}">Full catalogue</a></li>
+          <li><a href="{{ url_for('storefront.catalog', category='fresh_produce') }}">Fresh produce</a></li>
+          <li><a href="{{ url_for('storefront.catalog', category='household_cleaners') }}">Household cleaners</a></li>
+          <li><a href="{{ url_for('storefront.how_it_works') }}">How it works</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Account</h4>
+        <ul>
+          {% if current_user.is_authenticated %}
+            <li><a href="{{ url_for('orders.index') }}">My orders</a></li>
+            <li><a href="{{ url_for('subscription.portal') }}">Subscription pass</a></li>
+            <li><a href="{{ url_for('auth.profile') }}">Profile</a></li>
+          {% else %}
+            <li><a href="{{ url_for('auth.login') }}">Sign in</a></li>
+            <li><a href="{{ url_for('auth.register') }}">Create an account</a></li>
+          {% endif %}
+        </ul>
+      </div>
+      <div>
+        <h4>Service promise</h4>
+        <ul>
+          <li>{{ NB.merchant_sla_minutes }}-minute partner picking SLA</li>
+          <li>{{ NB.transit_sla_minutes }}-minute last-mile transit</li>
+          <li>{{ NB.delivery_radius_km }} km delivery radius</li>
+          <li>{{ NB.min_order_value|naira }} minimum basket</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© {{ current_year }} NaijaBasket. NDPA 2023 compliant — addresses encrypted at rest.</span>
+      <span>Engineered by <a href="https://emmanuelogezi.cv" rel="noopener">Emmanuel Ogezi</a></span>
+    </div>
+  </div>
+</footer>
+
+<nav class="bottom-nav" aria-label="Mobile">
+  <a class="{{ 'is-active' if request.endpoint == 'storefront.index' }}" href="{{ url_for('storefront.index') }}">
+    <span class="nav-glyph" aria-hidden="true">◉</span>Home
+  </a>
+  <a class="{{ 'is-active' if request.endpoint == 'storefront.catalog' }}" href="{{ url_for('storefront.catalog') }}">
+    <span class="nav-glyph" aria-hidden="true">▤</span>Catalogue
+  </a>
+  <a class="{{ 'is-active' if request.endpoint == 'checkout.basket' }}" href="{{ url_for('checkout.basket') }}">
+    <span class="nav-glyph" aria-hidden="true">▣</span>Basket
+    {% if cart_count > 0 %}<span class="bottomnav-badge" data-cart-badge>{{ cart_count }}</span>{% endif %}
+  </a>
+  {% if current_user.is_authenticated %}
+    <a class="{{ 'is-active' if request.blueprint == 'orders' }}" href="{{ url_for('orders.index') }}">
+      <span class="nav-glyph" aria-hidden="true">◷</span>Orders
+    </a>
+    <a class="{{ 'is-active' if request.blueprint == 'subscription' }}" href="{{ url_for('subscription.portal') }}">
+      <span class="nav-glyph" aria-hidden="true">✦</span>Pass
+    </a>
+  {% else %}
+    <a class="{{ 'is-active' if request.endpoint == 'auth.login' }}" href="{{ url_for('auth.login') }}">
+      <span class="nav-glyph" aria-hidden="true">☰</span>Sign in
+    </a>
+  {% endif %}
+</nav>
+
+<div id="toast-host" class="toast-host" aria-live="polite" aria-atomic="true"></div>
+
+<script>
+  window.NAIJA = {
+    csrfToken: "{{ csrf_token() }}",
+    minOrderValue: {{ NB.min_order_value }},
+    targetAov: {{ NB.target_aov }},
+    convenienceFee: {{ NB.convenience_fee }},
+    merchantSlaMinutes: {{ NB.merchant_sla_minutes }},
+    transitSlaMinutes: {{ NB.transit_sla_minutes }},
+    authenticated: {{ 'true' if current_user.is_authenticated else 'false' }}
+  };
+</script>
+<script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

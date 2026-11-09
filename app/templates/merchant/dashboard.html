@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_pill, mode_banner %}
+{% block title %}OMS · {{ store.name }}{% endblock %}
+{% block body_attrs %}data-sla-warning-seconds="{{ (NB.merchant_sla_minutes * 60 * 0.2)|int }}"{% endblock %}
+{% block content %}
+
+<div class="row-between">
+  <div>
+    <span class="eyebrow">Partner order management</span>
+    <h1 class="mb-0">{{ store.name }}</h1>
+    <p class="muted mb-0 small">
+      {{ store.address or store.mayor_market or 'Greater Lagos' }} ·
+      target {{ store.sla_target_minutes }} min · rating {{ compliance.sla_rating }}
+    </p>
+  </div>
+  <div class="btn-row">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('merchant.orders') }}">Order queue</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('merchant.inventory') }}">Inventory</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('merchant.dispatch_board') }}">Dispatch board</a>
+  </div>
+</div>
+
+{{ mode_banner(gateway_modes, "gateway") }}
+<div class="mt-1">{{ mode_banner(courier_modes, "courier") }}</div>
+
+<section class="grid grid-4 mt-3">
+  <div class="kpi kpi-danger">
+    <div class="kpi-label">Live queue</div>
+    <div class="kpi-value">{{ kpis.live_queue }}</div>
+    <div class="kpi-sub">Awaiting pick &amp; pack</div>
+  </div>
+  <div class="kpi kpi-primary">
+    <div class="kpi-label">Orders today</div>
+    <div class="kpi-value">{{ kpis.orders_today }}</div>
+    <div class="kpi-sub">{{ kpis.delivered }} delivered all-time</div>
+  </div>
+  <div class="kpi kpi-accent">
+    <div class="kpi-label">Store GMV</div>
+    <div class="kpi-value">{{ kpis.gmv|naira }}</div>
+    <div class="kpi-sub">{{ kpis.orders_total }} order(s)</div>
+  </div>
+  <div class="kpi kpi-dark">
+    <div class="kpi-label">Platform revenue</div>
+    <div class="kpi-value">{{ kpis.platform_revenue|naira }}</div>
+    <div class="kpi-sub">Commission + fees recognised</div>
+  </div>
+</section>
+
+<div class="sidebar-layout mt-3">
+  <div class="stack">
+    <section>
+      <div class="card-title">
+        <h2>Picking queue · {{ NB.merchant_sla_minutes }} min SLA</h2>
+        <span class="pill pill-warning">{{ live_orders|length }} live</span>
+      </div>
+
+      {% if live_orders %}
+        <div class="grid grid-2">
+          {% for order in live_orders %}
+            <article class="card card-pad {{ 'card-danger' if order.sla_state == 'danger' }}" data-sla-card>
+              <div class="row-between">
+                <a class="mono strong" href="{{ url_for('merchant.order_detail', ref=order.order_number) }}">{{ order.order_number }}</a>
+                <span class="sla-timer" data-countdown-seconds="{{ order.sla_seconds_remaining }}" data-state="{{ order.sla_state }}">--:--</span>
+              </div>
+              <div class="small muted mt-1">
+                {{ order.item_count }} item(s) · {{ order.gmv_amount|naira }} · paid {{ order.paid_at|timeago }}
+              </div>
+              <div class="row-between mt-2">
+                <span class="pill" data-sla-flag>
+                  {% if order.cross_contamination_risk %}Segregation required{% else %}Standard pick{% endif %}
+                </span>
+                <a class="btn btn-primary btn-sm" href="{{ url_for('merchant.order_detail', ref=order.order_number) }}">Open pick list</a>
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty">
+          <h3>Queue is clear</h3>
+          <p class="muted">Every paid order has been packed and handed to a courier.</p>
+        </div>
+      {% endif %}
+    </section>
+
+    <section class="card card-pad">
+      <div class="card-title"><h2>SLA performance</h2><span class="pill pill-primary">{{ compliance.orders_completed }} packed</span></div>
+      <div class="grid grid-3">
+        <div class="kpi">
+          <div class="kpi-label">Average pick</div>
+          <div class="kpi-value">{{ compliance.avg_pick_minutes if compliance.avg_pick_minutes is not none else '—' }}</div>
+          <div class="kpi-sub">minutes, target {{ compliance.target_minutes }}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Breaches</div>
+          <div class="kpi-value">{{ compliance.orders_breached }}</div>
+          <div class="kpi-sub">{{ compliance.breach_rate }}% of packed orders</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">SLA rating</div>
+          <div class="kpi-value">{{ compliance.sla_rating }}</div>
+          <div class="kpi-sub">100 − breach rate</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <aside class="stack">
+    <section class="card card-pad">
+      <div class="card-title"><h3>Low stock</h3><a class="small" href="{{ url_for('merchant.inventory') }}">Manage</a></div>
+      {% if low_stock %}
+        <ul class="data-list">
+          {% for product in low_stock %}
+            <li>
+              <span class="dl-key">{{ product.name }}<br><span class="tiny faint">{{ CATEGORY_LABELS.get(product.category, product.category) }}</span></span>
+              <span class="dl-val {{ 'text-right' }}">
+                <span class="pill {{ 'pill-danger' if product.stock_qty <= 4 else 'pill-warning' }}">{{ product.stock_qty }} left</span>
+              </span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted small mb-0">Shelves are healthy — nothing under 12 units.</p>
+      {% endif %}
+    </section>
+
+    <section class="card card-pad">
+      <h3>Operating rules</h3>
+      <ul class="data-list">
+        <li><span class="dl-key">Picking window</span><span class="dl-val">{{ NB.merchant_sla_minutes }} min</span></li>
+        <li><span class="dl-key">Warning at</span><span class="dl-val">{{ (NB.merchant_sla_minutes * 0.2)|round(1) }} min left</span></li>
+        <li><span class="dl-key">Take rate</span><span class="dl-val">{{ (store.commission_rate * 100)|pct }}</span></li>
+        <li><span class="dl-key">Auto-dispatch</span><span class="dl-val">on "Packed"</span></li>
+        <li><span class="dl-key">Chemicals</span><span class="dl-val">sealed lane, last</span></li>
+      </ul>
+    </section>
+
+    {% if current_user.is_admin %}
+      <div class="note note-primary">
+        You are signed in as an admin inspecting {{ store.name }}. Consumers and other
+        merchants cannot see this desk.
+      </div>
+    {% endif %}
+  </aside>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/merchant.js') }}" defer></script>
+{% endblock %}

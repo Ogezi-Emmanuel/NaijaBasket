@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Not allowed{% endblock %}
+{% block content %}
+<div class="empty">
+  <span class="pill pill-danger">403</span>
+  <h3>This desk is not yours to open</h3>
+  <p class="muted">Your account does not have access to that page. Merchant desks are scoped to their own store; consumers only ever see their own orders.</p>
+  <div class="btn-row" style="justify-content:center">
+    <a class="btn btn-primary" href="{{ url_for('storefront.catalog') }}">Back to the catalogue</a>
+    {% if current_user.is_authenticated %}
+      <a class="btn btn-ghost" href="{{ url_for('orders.index') }}">My orders</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

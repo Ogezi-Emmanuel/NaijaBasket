@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_pill, mode_banner %}
+{% block title %}Admin console{% endblock %}
+{% block content %}
+
+<div class="row-between">
+  <div>
+    <span class="eyebrow">Platform governance</span>
+    <h1 class="mb-0">Revenue &amp; operations</h1>
+    <p class="muted mb-0 small">
+      {{ kpis.orders }} order(s) · blended take rate {{ kpis.blended_take_rate_pct|pct }}
+      · {{ abandoned }} basket(s) awaiting recovery
+    </p>
+  </div>
+  <div class="btn-row">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.partners') }}">Partners</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.finance') }}">Finance</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.orders') }}">Orders</a>
+  </div>
+</div>
+
+{{ mode_banner(gateway_modes, "gateway") }}
+<div class="mt-1">{{ mode_banner(courier_modes, "courier") }}</div>
+<div class="mt-1">{{ mode_banner(whatsapp_modes, "recovery") }}</div>
+
+<section class="grid grid-4 mt-3">
+  <div class="kpi kpi-dark">
+    <div class="kpi-label">GMV</div>
+    <div class="kpi-value">{{ kpis.gmv|naira }}</div>
+    <div class="kpi-sub">AOV {{ kpis.aov|naira }}</div>
+  </div>
+  <div class="kpi kpi-primary">
+    <div class="kpi-label">Gross revenue</div>
+    <div class="kpi-value">{{ kpis.gross_revenue|naira }}</div>
+    <div class="kpi-sub">Commission {{ kpis.commission|naira }} + fees</div>
+  </div>
+  <div class="kpi kpi-accent">
+    <div class="kpi-label">Net contribution</div>
+    <div class="kpi-value">{{ kpis.net_margin|naira }}</div>
+    <div class="kpi-sub">{{ kpis.margin_pct|pct }} of GMV</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">SLA compliance</div>
+    <div class="kpi-value">{{ sla.compliance_rate|pct }}</div>
+    <div class="kpi-sub">{{ sla.orders_met }}/{{ sla.orders_paid }} within {{ sla.target_minutes }} min</div>
+  </div>
+</section>
+
+<section class="card card-pad mt-3">
+  <div class="card-title">
+    <h2>PRD unit-economics benchmark</h2>
+    <span class="pill pill-primary">AOV {{ benchmark.aov|naira }}</span>
+  </div>
+  <div class="grid grid-4">
+    <div class="kpi"><div class="kpi-label">Commission</div><div class="kpi-value" style="font-size:1.2rem">{{ benchmark.commission|naira }}</div><div class="kpi-sub">{{ benchmark.take_rate_pct|pct }} take rate</div></div>
+    <div class="kpi"><div class="kpi-label">Convenience fee</div><div class="kpi-value" style="font-size:1.2rem">{{ benchmark.convenience_fee|naira }}</div><div class="kpi-sub">per order</div></div>
+    <div class="kpi"><div class="kpi-label">Gross revenue</div><div class="kpi-value" style="font-size:1.2rem">{{ benchmark.gross_revenue|naira }}</div><div class="kpi-sub">commission + fee</div></div>
+    <div class="kpi kpi-primary"><div class="kpi-label">Net margin</div><div class="kpi-value" style="font-size:1.2rem">{{ benchmark.net_contribution_margin|naira }}</div><div class="kpi-sub">{{ benchmark.margin_pct_of_gmv|pct }} of GMV</div></div>
+  </div>
+  <div class="note note-primary mt-2">
+    Reproduces the PRD's target model exactly: {{ benchmark.aov|naira }} basket at
+    {{ benchmark.take_rate_pct|pct }} → {{ benchmark.gross_revenue|naira }} gross revenue, minus
+    {{ benchmark.gateway_and_processing|naira }} gateway and processing overhead →
+    {{ benchmark.net_contribution_margin|naira }} net contribution margin.
+  </div>
+</section>
+
+<div class="sidebar-layout mt-3">
+  <div class="stack">
+    <section class="grid grid-2">
+      <div class="card card-pad">
+        <h3>Order status mix</h3>
+        <ul class="data-list">
+          {% for row in status_breakdown %}
+            <li><span class="dl-key">{{ row.label }}</span><span class="dl-val">{{ row.count }}</span></li>
+          {% else %}
+            <li><span class="dl-key">No orders</span><span class="dl-val">—</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div class="card card-pad">
+        <h3>Gateway mix</h3>
+        <ul class="data-list">
+          {% for row in gateway_mix %}
+            <li><span class="dl-key">{{ row.gateway|capitalize }} <span class="tiny faint">{{ row.count }} order(s)</span></span><span class="dl-val">{{ row.gmv|naira }}</span></li>
+          {% else %}
+            <li><span class="dl-key">No payments</span><span class="dl-val">—</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div class="card card-pad">
+        <h3>Courier mix</h3>
+        <ul class="data-list">
+          {% for row in courier_mix %}
+            <li><span class="dl-key">{{ row.provider }} <span class="tiny faint">{{ row.mode }} · {{ row.count }} job(s)</span></span><span class="dl-val">{{ row.fees|naira }}</span></li>
+          {% else %}
+            <li><span class="dl-key">No dispatch jobs</span><span class="dl-val">—</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div class="card card-pad">
+        <h3>Category mix</h3>
+        <ul class="data-list">
+          {% for row in category_mix %}
+            <li>
+              <span class="dl-key">{{ row.label }} <span class="tiny faint">{{ row.units }} unit(s)</span></span>
+              <span class="dl-val">{{ row.gmv|naira }}<br><span class="tiny faint">{{ row.share_pct|pct }}</span></span>
+            </li>
+          {% else %}
+            <li><span class="dl-key">No sales</span><span class="dl-val">—</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div class="card card-pad">
+        <h3>Recovery funnel <span class="tiny faint">FR-06</span></h3>
+        <ul class="data-list">
+          {% for row in recovery_mix %}
+            <li><span class="dl-key">{{ row.label }}</span><span class="dl-val">{{ row.count }}</span></li>
+          {% else %}
+            <li><span class="dl-key">No recovery messages sent</span><span class="dl-val">—</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+    </section>
+
+    <section class="card card-pad">
+      <div class="card-title"><h2>Recent orders</h2><a class="small" href="{{ url_for('admin.orders') }}">All orders →</a></div>
+      <div class="table-wrap">
+        <table class="table table-sm">
+          <thead><tr><th>Order</th><th>Placed</th><th>Store</th><th>Status</th><th class="num">GMV</th><th class="num">Margin</th><th></th></tr></thead>
+          <tbody>
+            {% for order in recent_orders %}
+              <tr>
+                <td class="mono">{{ order.order_number }}</td>
+                <td class="muted small nowrap">{{ order.created_at.strftime('%d %b %H:%M') }}</td>
+                <td class="small">{{ order.store.name }}</td>
+                <td>{{ status_pill(order.status) }}</td>
+                <td class="num">{{ order.gmv_amount|naira }}</td>
+                <td class="num">{{ order.net_contribution_margin|naira }}</td>
+                <td class="text-right"><a class="btn btn-ghost btn-sm" href="{{ url_for('orders.detail', ref=order.order_number) }}">Inspect</a></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <aside class="stack">
+    <section class="card card-pad">
+      <div class="card-title"><h3>Partner SLA compliance</h3><a class="small" href="{{ url_for('admin.partners') }}">Manage</a></div>
+      {% if top_stores %}
+        <ul class="data-list">
+          {% for row in top_stores %}
+            <li>
+              <span class="dl-key">{{ row.store.name }}<br>
+                <span class="tiny faint">{{ row.orders_completed }} packed · avg {{ row.avg_pick_minutes if row.avg_pick_minutes is not none else '—' }} min</span>
+              </span>
+              <span class="dl-val">
+                {{ row.gmv|naira }}<br>
+                <span class="pill {{ 'pill-danger' if row.breach_rate > 15 else ('pill-warning' if row.breach_rate > 0 else 'pill-success') }}">{{ row.breach_rate|pct }} breach</span>
+              </span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted small mb-0">No partner activity yet.</p>
+      {% endif %}
+    </section>
+
+    <section class="card card-pad">
+      <h3>Maintenance</h3>
+      <div class="stack">
+        <form method="post" action="{{ url_for('admin.sla_sweep') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-ghost btn-block btn-sm" type="submit">Run SLA sweep now</button>
+        </form>
+        <form method="post" action="{{ url_for('admin.cart_recovery') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-ghost btn-block btn-sm" type="submit">Generate WhatsApp recovery links</button>
+        </form>
+      </div>
+      <p class="tiny faint mt-2 mb-0">
+        Recovery targets baskets idle past the configured window and mints a fee-waiver token.
+      </p>
+    </section>
+
+    <section class="card card-pad">
+      <h3>Service targets</h3>
+      <ul class="data-list">
+        <li><span class="dl-key">Picking SLA</span><span class="dl-val">{{ sla.target_minutes }} min</span></li>
+        <li><span class="dl-key">Transit SLA</span><span class="dl-val">{{ sla.transit_target_minutes }} min</span></li>
+        <li><span class="dl-key">Delivery radius</span><span class="dl-val">{{ NB.delivery_radius_km }} km</span></li>
+        <li><span class="dl-key">Minimum basket</span><span class="dl-val">{{ NB.min_order_value|naira }}</span></li>
+      </ul>
+    </section>
+  </aside>
+</div>
+
+{% endblock %}

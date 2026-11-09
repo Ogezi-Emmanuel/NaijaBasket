@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_pill, escrow_pin %}
+{% block title %}Order {{ order.order_number }}{% endblock %}
+{% block content %}
+
+<div data-order-tracker="{{ order.order_number }}"></div>
+
+<div class="row-between">
+  <div>
+    <h1 class="mb-0 mono">{{ order.order_number }}</h1>
+    <p class="muted mb-0 small">
+      Placed {{ order.created_at|timeago }} · {{ order.store.name }}
+      {% if order.payment_gateway %} · paid via {{ order.payment_gateway }}{% endif %}
+      {% if order.payment_channel %} ({{ order.payment_channel }}){% endif %}
+    </p>
+  </div>
+  <div class="row">
+    <span data-status-label>{{ order.status_label }}</span>
+    {{ status_pill(order.status) }}
+  </div>
+</div>
+
+<div class="alert alert-success alert-dismissible mt-2" data-delivered-banner hidden>
+  Delivered — escrow released to the merchant and courier. Refreshing your receipt…
+</div>
+
+{% if order.status == 'sla_breach' %}
+  <div class="alert alert-danger mt-2">
+    The partner blew the {{ NB.merchant_sla_minutes }}-minute picking window on this order.
+    It has been escalated and logged against {{ order.store.name }}'s SLA rating.
+  </div>
+{% endif %}
+
+<div class="sidebar-layout mt-2">
+  <div class="stack">
+    <section class="card card-pad">
+      <div class="card-title">
+        <h2>Live tracker</h2>
+        <span class="pill" data-escrow-label>{{ order.payment_escrow_status|replace('_', ' ') }}</span>
+      </div>
+      <ul class="tracker">
+        {% for label, reached in order.tracker_steps %}
+          <li class="tracker-step {{ 'is-reached' if reached }}" data-tracker-step="{{ loop.index0 }}">
+            <span class="tracker-dot">{{ loop.index }}</span>
+            <div>
+              <div class="tracker-label">{{ label }}</div>
+              <div class="tracker-hint">
+                {% if label == 'Order Placed' %}Funds held in escrow, partner notified.
+                {% elif label == 'Merchant Packing' %}{{ order.store.name }} picks, checks NAFDAC seals and segregates lanes.
+                {% elif label == 'Courier En Route' %}3PL rider carrying your basket. Courier never sees your PIN.
+                {% else %}Hand over your PIN to release escrow.{% endif %}
+              </div>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="card card-pad">
+      <div class="card-title">
+        <h2>Basket</h2>
+        <span class="pill pill-primary">{{ order.item_count }} item(s) · {{ order.gmv_amount|naira2 }}</span>
+      </div>
+      <div class="table-wrap">
+        <table class="table table-sm">
+          <thead>
+            <tr><th>Item</th><th>Lane</th><th class="num">Qty</th><th class="num">Unit</th><th class="num">Line</th></tr>
+          </thead>
+          <tbody>
+            {% for item in order.items %}
+              <tr>
+                <td>
+                  {{ item.name }}
+                  {% if item.requires_nafdac %}
+                    <span class="verify-badge {{ '' if item.nafdac_reg_no else 'is-missing' }}">{{ item.nafdac_reg_no or 'NAFDAC pending' }}</span>
+                  {% endif %}
+                </td>
+                <td><span class="safety-flag" data-lane="{{ item.safety_category }}">{{ SAFETY_LABELS.get(item.safety_category, '') }}</span></td>
+                <td class="num">{{ item.quantity }}</td>
+                <td class="num">{{ item.unit_price|naira }}</td>
+                <td class="num">{{ item.line_total|naira }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if order.cross_contamination_risk %}
+        <div class="note note-danger mt-2">
+          This basket mixes chemical and food lanes. The pick list forces a sealed liner and
+          places chemicals below the food in the crate.
+        </div>
+      {% endif %}
+    </section>
+
+    <section class="card card-pad">
+      <h2>Escrow ledger</h2>
+      {% if ledger %}
+        <div class="table-wrap">
+          <table class="table table-sm">
+            <thead><tr><th>Event</th><th>Party</th><th>Note</th><th class="num">Amount</th></tr></thead>
+            <tbody>
+              {% for entry in ledger %}
+                <tr>
+                  <td>{{ entry.entry_type|replace('_', ' ')|capitalize }}</td>
+                  <td>{{ entry.party|capitalize }}</td>
+                  <td class="muted small">{{ entry.note or '—' }}</td>
+                  <td class="num">{{ entry.amount|naira2 }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="muted small mb-0">No ledger movement yet — the escrow hold is opened when payment settles.</p>
+      {% endif %}
+    </section>
+
+    <section class="card card-pad">
+      <h2>Delivery</h2>
+      <ul class="data-list">
+        <li><span class="dl-key">Address</span><span class="dl-val">{{ order.delivery_address or '—' }}</span></li>
+        <li><span class="dl-key">Window</span><span class="dl-val">{{ order.delivery_window|replace('_', ' ')|capitalize }}</span></li>
+        <li>
+          <span class="dl-key">Courier</span>
+          <span class="dl-val" data-transit-rider>
+            {% if transit.assigned %}{{ transit.rider_name }}{% if transit.vehicle %} · {{ transit.vehicle }}{% endif %}{% else %}Assigning…{% endif %}
+          </span>
+        </li>
+        <li>
+          <span class="dl-key">ETA</span>
+          <span class="dl-val" data-transit-eta>
+            {% if transit.assigned and transit.eta_minutes %}{{ transit.eta_minutes }} min{% else %}—{% endif %}
+          </span>
+        </li>
+        <li>
+          <span class="dl-key">Transit SLA</span>
+          <span class="dl-val">
+            {% if transit.assigned and transit.transit_deadline %}
+              <span class="pill {{ 'pill-success' if transit.on_time else 'pill-danger' }}" data-transit-deadline>{{ transit.transit_deadline.strftime('%H:%M') }}</span>
+            {% else %}
+              <span class="pill" data-transit-deadline>starts at dispatch</span>
+            {% endif %}
+          </span>
+        </li>
+        {% if transit.assigned %}
+          <li><span class="dl-key">Courier mode</span><span class="dl-val">{{ transit.provider }} · {{ transit.mode }}</span></li>
+        {% endif %}
+        {% if order.packed_at and order.paid_at %}
+          <li><span class="dl-key">Pick duration</span><span class="dl-val">{{ ((order.packed_at - order.paid_at).total_seconds() / 60)|round(1) }} min</span></li>
+        {% endif %}
+      </ul>
+    </section>
+  </div>
+
+  <aside class="stack">
+    {% if reveal_pin %}
+      <div class="card card-pad">
+        <div class="card-title"><h3>Your delivery PIN</h3><span class="pill pill-accent">Escrow locked</span></div>
+        {{ escrow_pin(order.delivery_pin, reveal=True) }}
+        <p class="tiny faint mt-2 mb-0">
+          Do not share this with anyone but the courier holding your basket. After
+          {{ order.delivery_pin_attempts }} failed attempt(s) the entry locks
+          automatically.
+        </p>
+      </div>
+    {% elif is_owner and order.payment_escrow_status == 'released' %}
+      <div class="card card-pad">
+        <div class="card-title"><h3>Delivery PIN</h3><span class="pill pill-success">Released</span></div>
+        {{ escrow_pin(order.delivery_pin, reveal=False) }}
+        <p class="tiny faint mb-0">Escrow has been released on PIN verification. The code is no longer valid.</p>
+      </div>
+    {% endif %}
+
+    <div class="card card-pad">
+      <h3>Order value</h3>
+      <ul class="summary-list">
+        <li><span>Basket</span><span>{{ order.gmv_amount|naira2 }}</span></li>
+        <li><span>Partner commission</span><span>{{ order.commission_amount|naira2 }}</span></li>
+        <li><span>Platform fee</span><span>{{ order.convenience_fee|naira2 }}</span></li>
+        {% if order.subscription_allocation %}
+          <li><span>Pass allocation</span><span>{{ order.subscription_allocation|naira2 }}</span></li>
+        {% endif %}
+        {% if order.recovery_discount %}
+          <li><span>Recovery discount</span><span>−{{ order.recovery_discount|naira2 }}</span></li>
+        {% endif %}
+        <li><span>Courier fare</span><span>{{ order.logistics_cost|naira2 }}</span></li>
+        <li class="is-total"><span>Merchant payout</span><span>{{ (order.gmv_amount - order.commission_amount)|naira2 }}</span></li>
+      </ul>
+    </div>
+
+    {% if is_owner and order.status in ('pending_payment', 'paid_escrow') %}
+      <div class="card card-pad">
+        <h3>Cancel order</h3>
+        <p class="small muted">Only possible before the merchant starts packing. Escrow is refunded in full.</p>
+        <form method="post" action="{{ url_for('orders.cancel', ref=order.order_number) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-ghost btn-block" type="submit">Cancel and refund</button>
+        </form>
+      </div>
+    {% endif %}
+
+    {% if not is_owner and (current_user.is_merchant or current_user.is_admin) %}
+      <div class="card card-pad card-primary">
+        <h3>Release escrow</h3>
+        <p class="small muted">Courier desk: enter the 4-digit code the buyer reads out at handover.</p>
+        <form method="post" action="{{ url_for('orders.release', ref=order.order_number) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="row">
+            <input class="input mono text-center" name="pin" inputmode="numeric" maxlength="4"
+                   pattern="[0-9]{4}" placeholder="••••" required autocomplete="off">
+            <button class="btn btn-primary" type="submit">Release</button>
+          </div>
+        </form>
+      </div>
+    {% endif %}
+
+    {% if current_user.is_admin %}
+      <div class="card card-pad">
+        <h3>Admin</h3>
+        <form method="post" action="{{ url_for('orders.sla_check', ref=order.order_number) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-ghost btn-block" type="submit">Re-evaluate SLA now</button>
+        </form>
+      </div>
+    {% endif %}
+
+    <div class="card card-pad">
+      <h3>Delivery guarantee</h3>
+      <ul class="data-list">
+        <li><span class="dl-key">Picking SLA</span><span class="dl-val">{{ NB.merchant_sla_minutes }} min</span></li>
+        <li><span class="dl-key">Transit SLA</span><span class="dl-val">{{ NB.transit_sla_minutes }} min</span></li>
+        <li><span class="dl-key">Radius</span><span class="dl-val">{{ NB.delivery_radius_km }} km</span></li>
+        <li><span class="dl-key">Escrow state</span><span class="dl-val">{{ order.payment_escrow_status }}</span></li>
+      </ul>
+    </div>
+  </aside>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/orders.js') }}" defer></script>
+{% endblock %}

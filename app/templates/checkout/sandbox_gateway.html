@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Sandbox gateway{% endblock %}
+{% block content %}
+<div class="sidebar-layout">
+  <section class="card card-dark card-pad">
+    <span class="eyebrow">{{ order.payment_gateway|capitalize }} · sandbox</span>
+    <h1>Simulated payment page</h1>
+    <p class="small">
+      No live gateway key is configured, so NaijaBasket is standing in for the real
+      checkout. Approving here runs exactly the same settlement path a live
+      webhook would: escrow hold, stock reservation, basket cleared.
+    </p>
+
+    <ul class="data-list">
+      <li><span class="dl-key">Order</span><span class="dl-val mono">{{ order.order_number }}</span></li>
+      <li><span class="dl-key">Reference</span><span class="dl-val mono tiny">{{ order.payment_reference }}</span></li>
+      <li><span class="dl-key">Partner store</span><span class="dl-val">{{ order.store.name }}</span></li>
+      <li><span class="dl-key">Items</span><span class="dl-val">{{ order.item_count }}</span></li>
+      <li><span class="dl-key">Amount</span><span class="dl-val">{{ order.gmv_amount|naira2 }}</span></li>
+    </ul>
+
+    <div class="btn-row mt-3">
+      <form method="post" action="{{ url_for('checkout.sandbox_gateway', reference=order.payment_reference) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="decision" value="approve">
+        <button class="btn btn-primary btn-lg" type="submit">Approve {{ order.gmv_amount|naira }}</button>
+      </form>
+      <form method="post" action="{{ url_for('checkout.sandbox_gateway', reference=order.payment_reference) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="decision" value="decline">
+        <button class="btn btn-ghost btn-lg" type="submit">Decline charge</button>
+      </form>
+    </div>
+  </section>
+
+  <aside class="stack">
+    <div class="card card-pad">
+      <h3>What happens on approval</h3>
+      <ul class="tracker">
+        <li class="tracker-step is-reached">
+          <span class="tracker-dot">1</span>
+          <div><div class="tracker-label">Escrow hold opened</div><div class="tracker-hint">Funds marked held against order {{ order.order_number }}.</div></div>
+        </li>
+        <li class="tracker-step is-reached">
+          <span class="tracker-dot">2</span>
+          <div><div class="tracker-label">{{ NB.merchant_sla_minutes }}-minute clock starts</div><div class="tracker-hint">{{ order.store.name }} must pick and pack before the deadline, or an SLA breach is recorded.</div></div>
+        </li>
+        <li class="tracker-step is-reached">
+          <span class="tracker-dot">3</span>
+          <div><div class="tracker-label">Your PIN is issued</div><div class="tracker-hint">A 4-digit code appears on the order page — the merchant and courier never see it.</div></div>
+        </li>
+      </ul>
+    </div>
+    <div class="note note-accent">
+      Add live Paystack or Flutterwave keys to <span class="mono">.env</span> and this
+      page disappears in favour of the real gateway redirect.
+    </div>
+  </aside>
+</div>
+{% endblock %}

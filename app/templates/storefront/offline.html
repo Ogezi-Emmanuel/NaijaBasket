@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Offline{% endblock %}
+{% block content %}
+<div class="empty">
+  <span class="pill pill-warning">Offline</span>
+  <h3>You have dropped off the network</h3>
+  <p class="muted">
+    The catalogue you last opened is still browsable. Basket changes, checkout and the
+    live courier tracker will resume automatically the moment your connection returns —
+    we never serve stale prices or SLA timers.
+  </p>
+  <div class="btn-row" style="justify-content:center">
+    <a class="btn btn-primary" href="{{ url_for('storefront.catalog') }}">Open the cached catalogue</a>
+    <button class="btn btn-ghost" type="button" onclick="window.location.reload()">Retry now</button>
+  </div>
+</div>
+{% endblock %}

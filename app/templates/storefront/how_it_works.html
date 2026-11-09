@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}How it works{% endblock %}
+{% block content %}
+
+<section class="hero">
+  <img class="hero-media"
+       src="https://thumb.wikimedia.org/wikipedia/commons/thumb/0/05/Deliveroo_driver_on_a_motorbike_in_Manchester.jpg/960px-Deliveroo_driver_on_a_motorbike_in_Manchester.jpg"
+       alt="" aria-hidden="true">
+  <div class="hero-inner">
+    <span class="eyebrow">From your screen to your kitchen</span>
+    <h1>Four hands, one basket, zero market traffic.</h1>
+    <p>
+      You order. A vetted partner supermarket picks and packs within
+      {{ NB.merchant_sla_minutes }} minutes. A 3PL courier takes the last
+      {{ NB.transit_sla_minutes }} minutes. Your PIN releases the escrow.
+    </p>
+    <a class="btn btn-primary btn-lg" href="{{ url_for('storefront.catalog') }}">Browse the catalogue</a>
+  </div>
+</section>
+
+<section class="grid grid-2 mt-3">
+  <div class="card card-pad">
+    <div class="card-title"><h2>The consumer journey</h2><span class="pill pill-primary">3 clicks to checkout</span></div>
+    <ul class="tracker">
+      <li class="tracker-step is-reached">
+        <span class="tracker-dot">1</span>
+        <div><div class="tracker-label">Build your basket</div><div class="tracker-hint">One basket, one store. We show a live progress bar to the {{ NB.min_order_value|naira }} floor and suggest add-ons that close the gap to your {{ NB.target_aov|naira }} target basket.</div></div>
+      </li>
+      <li class="tracker-step is-reached">
+        <span class="tracker-dot">2</span>
+        <div><div class="tracker-label">Pay into escrow</div><div class="tracker-hint">Bank transfer, debit card or USSD. Funds are held, not handed over. The platform fee is calculated server-side — never trusted from the browser.</div></div>
+      </li>
+      <li class="tracker-step is-reached">
+        <span class="tracker-dot">3</span>
+        <div><div class="tracker-label">Partner picks in {{ NB.merchant_sla_minutes }} minutes</div><div class="tracker-hint">The store's OMS opens a countdown the second the payment settles. Blow the window and the order escalates with an SLA breach recorded against the store's rating.</div></div>
+      </li>
+      <li class="tracker-step is-reached">
+        <span class="tracker-dot">4</span>
+        <div><div class="tracker-label">Courier is dispatched automatically</div><div class="tracker-hint">Marking the order packed fires the 3PL bridge inside the {{ NB.delivery_radius_km }} km radius. The rider payload deliberately carries no PIN and no exact street number.</div></div>
+      </li>
+      <li class="tracker-step is-reached">
+        <span class="tracker-dot">5</span>
+        <div><div class="tracker-label">Hand over your PIN</div><div class="tracker-hint">Read the 4-digit code to the courier when your basket is in your hands. That single act releases the merchant payout and the rider fee.</div></div>
+      </li>
+    </ul>
+  </div>
+
+  <div class="stack">
+    <div class="card card-pad">
+      <h3>The four roles</h3>
+      <ul class="data-list">
+        <li><span class="dl-key">Consumer / Subscriber</span><span class="dl-val">Browse, subscribe, track, release</span></li>
+        <li><span class="dl-key">Partner merchant</span><span class="dl-val">OMS, pick &amp; pack, dispatch</span></li>
+        <li><span class="dl-key">3PL courier</span><span class="dl-val">Kwik / Gokada assignment &amp; transit</span></li>
+        <li><span class="dl-key">Platform admin</span><span class="dl-val">Economics, partners, escrow finance</span></li>
+      </ul>
+    </div>
+
+    <div class="card card-pad">
+      <h3>Service levels we hold ourselves to</h3>
+      <div class="grid grid-2">
+        <div class="kpi kpi-primary">
+          <div class="kpi-label">Picking SLA</div>
+          <div class="kpi-value">{{ NB.merchant_sla_minutes }} min</div>
+          <div class="kpi-sub">Warning at {{ NB.merchant_sla_minutes }} min, breach auto-logged</div>
+        </div>
+        <div class="kpi kpi-accent">
+          <div class="kpi-label">Transit SLA</div>
+          <div class="kpi-value">{{ NB.transit_sla_minutes }} min</div>
+          <div class="kpi-sub">Measured from rider assignment</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card card-pad">
+      <h3>Safety, encoded</h3>
+      <ul class="data-list">
+        <li><span class="dl-key">Food listings</span><span class="dl-val">NAFDAC registration required</span></li>
+        <li><span class="dl-key">Chemicals</span><span class="dl-val">Sealed lane, picked last</span></li>
+        <li><span class="dl-key">Cold chain</span><span class="dl-val">Thermal liner flagged at dispatch</span></li>
+        <li><span class="dl-key">Addresses</span><span class="dl-val">AES-256-GCM at rest (NDPA 2023)</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="card card-dark card-pad mt-3">
+  <div class="grid grid-2">
+    <div>
+      <h2>Why the {{ NB.min_order_value|naira }} floor exists</h2>
+      <p>
+        Scheduled household baskets only work when delivery overhead is spread across a
+        real basket. The floor protects the merchant's margin, keeps the
+        {{ NB.convenience_fee|naira }} platform fee sane, and lets the courier quote a
+        fair fare — so nobody has to cut corners on your order.
+      </p>
+    </div>
+    <div>
+      <h3>Subscriptions</h3>
+      <p>
+        A monthly pass spreads its price across the orders you place, which is why
+        subscribers see a recognised revenue allocation on every checkout. Fewer,
+        bigger, predictable baskets — better for everyone in the chain.
+      </p>
+      <a class="btn btn-primary" href="{{ url_for('subscription.portal') }}">See subscription passes</a>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

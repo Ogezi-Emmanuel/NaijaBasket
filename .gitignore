@@ -1,0 +1,37 @@
+# --- Python ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+build/
+dist/
+
+# --- Test / tooling caches -------------------------------------------------
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- Virtual environments --------------------------------------------------
+.venv/
+venv/
+env/
+
+# --- Secrets --------------------------------------------------------------
+# Never commit real credentials; ship .env.example instead.
+.env
+.env.*
+!.env.example
+
+# --- Local databases ------------------------------------------------------
+# The dev SQLite file holds password hashes and encrypted PII.
+*.db
+*.sqlite3
+instance/
+
+# --- OS / editor ----------------------------------------------------------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

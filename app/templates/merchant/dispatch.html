@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_pill %}
+{% block title %}Dispatch board · {{ store.name }}{% endblock %}
+{% block content %}
+
+<div class="row-between">
+  <div>
+    <h1 class="mb-0">Dispatch board</h1>
+    <p class="muted mb-0 small">
+      Every courier request raised by {{ store.name }} · transit SLA {{ NB.transit_sla_minutes }} minutes from assignment
+    </p>
+  </div>
+  <div class="btn-row">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('merchant.orders') }}">Order queue</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('merchant.dashboard') }}">Dashboard</a>
+  </div>
+</div>
+
+{% if board %}
+  <div class="grid grid-2 mt-3">
+    {% for row in board %}
+      {% set order = row.order %}
+      {% set transit = row.transit %}
+      <article class="card card-pad {{ 'card-accent' if row.requested else '' }}">
+        <div class="row-between">
+          <a class="mono strong" href="{{ url_for('merchant.order_detail', ref=order.order_number) }}">{{ order.order_number }}</a>
+          {{ status_pill(order.status) }}
+        </div>
+
+        <ul class="data-list mt-2">
+          <li><span class="dl-key">Courier</span><span class="dl-val">{{ transit.provider or '—' }} <span class="faint">({{ transit.mode or 'sandbox' }})</span></span></li>
+          <li><span class="dl-key">Rider</span><span class="dl-val">{{ transit.rider_name or 'unassigned' }}</span></li>
+          <li><span class="dl-key">Vehicle</span><span class="dl-val">{{ transit.vehicle or '—' }}</span></li>
+          <li><span class="dl-key">Distance</span><span class="dl-val">{{ transit.distance_km or '—' }} km</span></li>
+          <li><span class="dl-key">ETA</span><span class="dl-val">{{ transit.eta_minutes or '—' }} min</span></li>
+          <li><span class="dl-key">Packed</span><span class="dl-val">{{ order.packed_at|timeago }}</span></li>
+          {% if transit.transit_deadline %}
+            <li>
+              <span class="dl-key">Transit deadline</span>
+              <span class="dl-val">
+                <span class="pill {{ 'pill-success' if transit.on_time else 'pill-danger' }}">{{ transit.transit_deadline.strftime('%H:%M:%S') }}</span>
+              </span>
+            </li>
+          {% endif %}
+        </ul>
+
+        <div class="btn-row mt-2">
+          <form method="post" action="{{ url_for('merchant.redispatch', ref=order.order_number) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-accent btn-sm" type="submit">Re-request courier</button>
+          </form>
+          <a class="btn btn-ghost btn-sm" href="{{ url_for('merchant.order_detail', ref=order.order_number) }}">Pick list</a>
+        </div>
+
+        {% if transit.assigned and transit.eta_minutes %}
+          <div class="note note-accent mt-2">
+            Riders are assigned deterministically in sandbox mode, so demos are repeatable.
+            The payload sent to the courier strips the buyer's PIN and street number.
+          </div>
+        {% endif %}
+      </article>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty mt-3">
+    <h3>No dispatch jobs yet</h3>
+    <p class="muted">Courier requests appear the moment an order is sealed as packed.</p>
+    <a class="btn btn-primary" href="{{ url_for('merchant.orders') }}">Open the order queue</a>
+  </div>
+{% endif %}
+
+{% endblock %}
