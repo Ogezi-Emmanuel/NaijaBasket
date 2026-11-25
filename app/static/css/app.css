@@ -8,28 +8,28 @@
    =========================================================================== */
 
 :root {
-  /* --- Primary: Energetic Emerald (freshness, 15-min SLA speed) --------- */
-  --primary: #10b981;
-  --primary-dark: #0d9a6c;
-  --primary-deep: #0a7a56;
-  --primary-soft: #e8f8f1;
-  --primary-alt: #00b4d8;
+  /* --- Primary: Chartreuse (freshness, 15-min SLA speed) --------------- */
+  --primary: #e8f060;
+  --primary-dark: #7d8a0f;
+  --primary-deep: #4f5a07;
+  --primary-soft: #f7fadd;
+  --primary-alt: #cdd84a;
 
-  /* --- Secondary: Charcoal / Slate Gray (structure) --------------------- */
-  --secondary: #212529;
-  --secondary-soft: #2d3238;
-  --secondary-mid: #4b5157;
+  /* --- Secondary: Warm Espresso (structure) ---------------------------- */
+  --secondary: #26201e;
+  --secondary-soft: #342c28;
+  --secondary-mid: #54463f;
 
-  /* --- Accent: Warm Coral / Harvest Yellow (CTAs, cart badges) --------- */
-  --accent: #f4a261;
-  --accent-dark: #e08c46;
-  --accent-soft: #fdf2e7;
+  /* --- Accent: Deep Plum-Wine (CTAs, cart badges) ---------------------- */
+  --accent: #382028;
+  --accent-dark: #241318;
+  --accent-soft: #f2e9eb;
 
-  /* --- Neutrals --------------------------------------------------------- */
-  --canvas: #f8f9fa;
-  --surface: #ffffff;
-  --border: #e5e7eb;
-  --border-strong: #d5d8dd;
+  /* --- Neutrals: Warm Cream / Beige ------------------------------------ */
+  --canvas: #f6f2ea;
+  --surface: #fffdfa;
+  --border: #e7dfd2;
+  --border-strong: #d8ccbb;
 
   /* --- States ----------------------------------------------------------- */
   --success: #2e7d5b;
@@ -37,10 +37,10 @@
   --danger: #b23a48;
 
   /* --- Ink -------------------------------------------------------------- */
-  --ink: #212529;
-  --ink-muted: #5f666d;
-  --ink-faint: #8b9198;
-  --on-dark: #f4f6f7;
+  --ink: #26201e;
+  --ink-muted: #6b625b;
+  --ink-faint: #9a9089;
+  --on-dark: #f4f1ec;
 
   /* --- Elevation & shape ----------------------------------------------- */
   --radius-xs: 8px;
@@ -48,10 +48,10 @@
   --radius: 16px;
   --radius-lg: 24px;
   --radius-pill: 999px;
-  --shadow-xs: 0 1px 2px rgba(33, 37, 41, 0.05);
-  --shadow-sm: 0 2px 6px rgba(33, 37, 41, 0.06), 0 1px 2px rgba(33, 37, 41, 0.04);
-  --shadow-md: 0 10px 28px rgba(33, 37, 41, 0.09);
-  --shadow-lg: 0 24px 60px rgba(33, 37, 41, 0.14);
+  --shadow-xs: 0 1px 2px rgba(38, 32, 30, 0.05);
+  --shadow-sm: 0 2px 6px rgba(38, 32, 30, 0.06), 0 1px 2px rgba(38, 32, 30, 0.04);
+  --shadow-md: 0 10px 28px rgba(38, 32, 30, 0.09);
+  --shadow-lg: 0 24px 60px rgba(38, 32, 30, 0.14);
 
   /* --- Type ------------------------------------------------------------- */
   --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
@@ -292,7 +292,7 @@ hr {
   place-items: center;
   font-size: 0.82rem;
   font-weight: 800;
-  color: #04231a;
+  color: #23230b;
 }
 
 .brand-tag {
@@ -333,7 +333,7 @@ hr {
 }
 
 .nav-link.is-active {
-  color: #06231b;
+  color: #23230b;
   background: var(--primary);
   font-weight: 650;
 }
@@ -405,8 +405,8 @@ hr {
   height: 20px;
   padding: 0 5px;
   border-radius: var(--radius-pill);
-  background: var(--accent);
-  color: #3b2306;
+  background: var(--primary);
+  color: #23230b;
   font-size: 0.7rem;
   font-weight: 800;
   display: grid;
@@ -472,8 +472,8 @@ hr {
 .bottomnav-badge {
   position: absolute;
   transform: translate(14px, -12px);
-  background: var(--accent);
-  color: #3b2306;
+  background: var(--primary);
+  color: #23230b;
   border-radius: var(--radius-pill);
   min-width: 17px;
   height: 17px;
@@ -517,22 +517,22 @@ hr {
 
 .btn-primary {
   background: var(--primary);
-  color: #04241a;
+  color: #23230b;
 }
 
 .btn-primary:hover {
   background: var(--primary-dark);
-  color: #04241a;
+  color: #23230b;
 }
 
 .btn-accent {
   background: var(--accent);
-  color: #3b2306;
+  color: var(--on-dark);
 }
 
 .btn-accent:hover {
   background: var(--accent-dark);
-  color: #3b2306;
+  color: var(--on-dark);
 }
 
 .btn-ghost {
@@ -677,9 +677,9 @@ hr {
   z-index: -1;
   background: linear-gradient(
     100deg,
-    rgba(18, 20, 22, 0.94) 6%,
-    rgba(18, 20, 22, 0.82) 42%,
-    rgba(18, 20, 22, 0.42) 78%
+    rgba(30, 25, 23, 0.94) 6%,
+    rgba(30, 25, 23, 0.82) 42%,
+    rgba(30, 25, 23, 0.42) 78%
   );
 }
 
@@ -706,7 +706,7 @@ hr {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  color: var(--primary);
+  color: var(--primary-deep);
   margin-bottom: 14px;
 }
 
@@ -714,7 +714,12 @@ hr {
   content: "";
   width: 22px;
   height: 2px;
-  background: var(--primary);
+  background: currentColor;
+}
+
+.hero .eyebrow,
+.card-dark .eyebrow {
+  color: var(--primary);
 }
 
 /* ---------------------------------------------------------------------------
@@ -736,14 +741,14 @@ hr {
 
 .pill-primary {
   background: var(--primary-soft);
-  border-color: rgba(16, 185, 129, 0.3);
+  border-color: rgba(125, 138, 15, 0.32);
   color: var(--primary-deep);
 }
 
 .pill-accent {
   background: var(--accent-soft);
-  border-color: rgba(244, 162, 97, 0.42);
-  color: #8a4d13;
+  border-color: rgba(56, 32, 40, 0.3);
+  color: #5a3038;
 }
 
 .pill-success {
@@ -1072,7 +1077,7 @@ hr {
 }
 
 .progress-bar.is-met {
-  background: linear-gradient(90deg, var(--primary) 0%, #57d9a7 100%);
+  background: linear-gradient(90deg, var(--primary) 0%, #b9c934 100%);
 }
 
 .progress-lg {
@@ -1088,7 +1093,7 @@ hr {
 }
 
 .minimum-bar.is-met {
-  border-color: rgba(16, 185, 129, 0.45);
+  border-color: rgba(125, 138, 15, 0.45);
   background: linear-gradient(180deg, var(--primary-soft) 0%, var(--surface) 70%);
 }
 
@@ -1139,7 +1144,7 @@ hr {
 
 .qty-btn:hover {
   background: var(--primary);
-  color: #04241a;
+  color: #23230b;
 }
 
 .qty-value {
@@ -1236,7 +1241,7 @@ hr {
 .tracker-step.is-reached .tracker-dot {
   background: var(--primary);
   border-color: var(--primary);
-  color: #04241a;
+  color: #23230b;
 }
 
 .tracker-step.is-reached::before {
@@ -1268,7 +1273,7 @@ hr {
   font-size: clamp(2rem, 9vw, 2.7rem);
   font-weight: 700;
   letter-spacing: 0.3em;
-  color: var(--accent);
+  color: var(--primary);
   margin: 8px 0 4px;
   padding-left: 0.3em;
 }
@@ -1653,13 +1658,13 @@ hr {
   border-radius: var(--radius-sm);
   font-size: 0.79rem;
   background: var(--accent-soft);
-  border: 1px solid rgba(244, 162, 97, 0.42);
-  color: #8a4d13;
+  border: 1px solid rgba(56, 32, 40, 0.3);
+  color: #5a3038;
 }
 
 .mode-banner.is-live {
   background: var(--primary-soft);
-  border-color: rgba(16, 185, 129, 0.36);
+  border-color: rgba(125, 138, 15, 0.36);
   color: var(--primary-deep);
 }
 

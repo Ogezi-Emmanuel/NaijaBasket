@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="NaijaBasket">
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#10B981"/>
-      <stop offset="1" stop-color="#00B4D8"/>
+      <stop offset="0" stop-color="#E8F060"/>
+      <stop offset="1" stop-color="#CDD84A"/>
     </linearGradient>
   </defs>
-  <rect width="512" height="512" rx="112" fill="#212529"/>
+  <rect width="512" height="512" rx="112" fill="#26201E"/>
   <rect x="36" y="36" width="440" height="440" rx="88" fill="url(#g)"/>
-  <path d="M150 214h212l-22 148a34 34 0 0 1-34 30H206a34 34 0 0 1-34-30z" fill="#0A2E22" opacity=".92"/>
-  <path d="M196 214c0-40 26-72 60-72s60 32 60 72" fill="none" stroke="#0A2E22" stroke-width="20" stroke-linecap="round"/>
-  <circle cx="256" cy="330" r="30" fill="#F4A261"/>
+  <path d="M150 214h212l-22 148a34 34 0 0 1-34 30H206a34 34 0 0 1-34-30z" fill="#26201E" opacity=".92"/>
+  <path d="M196 214c0-40 26-72 60-72s60 32 60 72" fill="none" stroke="#26201E" stroke-width="20" stroke-linecap="round"/>
+  <circle cx="256" cy="330" r="30" fill="#F4F1EC"/>
 </svg>
