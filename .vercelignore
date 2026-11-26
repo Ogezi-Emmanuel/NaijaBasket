@@ -1,0 +1,36 @@
+# Keep the deployment bundle lean; none of this belongs in a serverless build.
+
+# Virtual environments / caches
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local data & secrets (never ship these to a host)
+*.db
+*.sqlite3
+instance/
+.env
+.env.*
+!.env.example
+
+# Tooling / editor
+.git/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Tests, docs and infra blueprints are dev-only
+tests/
+Dockerfile
+docker-compose.yml
+Procfile
+render.yaml
+fly.toml

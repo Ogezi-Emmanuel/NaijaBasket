@@ -65,8 +65,8 @@ revenue rather than charged to the merchant.
 ## Stack
 
 - **Python 3.13 / Flask 3** application factory, SQLAlchemy 2, Flask-Login, Flask-WTF, Flask-Migrate (Alembic), Flask-Limiter
-- **PostgreSQL** in production (managed, via `DATABASE_URL`); SQLite for local development
-- **Gunicorn** (`gthread`) behind Cloudflare, deployed as a Docker image
+- **PostgreSQL** in production (managed, via `DATABASE_URL`); SQLite for local development and for the Vercel serverless demo
+- **Gunicorn** (`gthread`) behind Cloudflare, deployed as a Docker image; the same code runs as a single Vercel Python function
 - **Paystack / Flutterwave** payments and webhooks; **Kwik / Gokada** dispatch
 - **Sentry** (optional) for error reporting
 - Server-rendered Jinja templates + a service-worker-backed PWA shell (installable, offline fallback page)
@@ -95,7 +95,7 @@ migrations/          Alembic revisions
 tests/               pytest suite
 scheduler.py         always-on worker for the two time-driven sweeps
 wsgi.py              WSGI entrypoint
-Dockerfile render.yaml Procfile
+Dockerfile render.yaml Procfile vercel.json
 ```
 
 ---
@@ -162,10 +162,10 @@ The important ones:
 
 | Variable | Notes |
 |---|---|
-| `SECRET_KEY` | **Required in production** — the app refuses to boot without it |
-| `ENCRYPTION_KEY` | **Required in production** — 64 hex chars; rotating it makes stored addresses unreadable |
+| `SECRET_KEY` | **Required in production** — the app refuses to boot without it (the serverless profile falls back to a demo key) |
+| `ENCRYPTION_KEY` | **Required in production** — 64 hex chars; rotating it makes stored addresses unreadable (the serverless profile derives one from `SECRET_KEY`) |
 | `DATABASE_URL` | Managed Postgres connection string; defaults to SQLite |
-| `FLASK_ENV` | `development` / `testing` / `production` |
+| `FLASK_ENV` | `development` / `testing` / `production` / `serverless` (auto-selected on Vercel) |
 | `SESSION_COOKIE_SECURE=1` | Required behind Cloudflare HTTPS |
 | `PROXY_FIX_HOPS` | Trusted proxy hops; `1` on a PaaS behind Cloudflare, `0` locally |
 | `PAYSTACK_*` / `FLUTTERWAVE_*` | Blank ⇒ deterministic sandbox gateway |
@@ -204,6 +204,33 @@ and keep `SESSION_COOKIE_SECURE=1` with `PROXY_FIX_HOPS` set so gateway callback
 URLs are built as `https://`.
 
 `Procfile` and `Dockerfile` also cover Railway and Fly.io.
+
+### Vercel (serverless)
+
+The whole app deploys to Vercel as one Python function with **no other backend
+service**. Vercel exports `VERCEL=1`, which auto-selects the `serverless`
+profile: the database lives in the function's only writable path (`/tmp`),
+connection pooling is disabled, and the demo dataset is bootstrapped on cold
+start. The seed accounts above therefore work on a pristine deploy with nothing
+to configure and nothing to run.
+
+```powershell
+npm i -g vercel
+vercel            # preview deploy
+vercel --prod     # production deploy
+```
+
+[vercel.json](file:///c:/Users/user/OneDrive/Desktop/NaijaBasket/vercel.json)
+routes every path to `wsgi.py`; there is no separate frontend to build — the Jinja
+templates and PWA assets ship inside the same function.
+
+**Ephemeral by design.** `/tmp` is per-container and resets when the container is
+recycled, so demo data (new orders, registrations) does not survive a cold start —
+it simply re-seeds on the next one. To persist data, set `DATABASE_URL` to a
+managed Postgres (Neon, Render, etc.); the same profile then uses it in place of
+`/tmp`. The two time-driven sweeps do not run on Vercel (serverless has no
+background worker and Hobby cron is once-per-day); trigger
+`flask --app wsgi sla-check` / `cart-recovery` manually when needed.
 
 ### The two scheduled sweeps
 

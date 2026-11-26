@@ -7,6 +7,7 @@ consumer storefront -> partner supermarket OMS (15-minute SLA) -> 3PL dispatch
 
 import logging
 import os
+import threading
 
 import click
 from flask import Flask, jsonify, render_template, request
@@ -39,7 +40,7 @@ CSRF_EXEMPT_BLUEPRINTS = ("webhooks",)
 
 
 def create_app(config_name: str | None = None) -> Flask:
-    config_name = config_name or os.environ.get("FLASK_ENV", "development")
+    config_name = config_name or _resolve_config_name()
     config_class = CONFIGS.get(config_name, CONFIGS["default"])
 
     app = Flask(__name__, static_folder="static", template_folder="templates")
@@ -58,8 +59,54 @@ def create_app(config_name: str | None = None) -> Flask:
     _register_jinja(app)
     _register_errors(app)
     _register_cli(app)
+    _register_bootstrap(app)
 
     return app
+
+
+def _resolve_config_name() -> str:
+    """Choose a configuration profile.
+
+    Vercel exports VERCEL=1, so the app auto-selects the serverless profile and
+    boots with zero configuration. An explicit FLASK_ENV still wins.
+    """
+    explicit = os.environ.get("FLASK_ENV")
+    if explicit:
+        return explicit
+    if os.environ.get("VERCEL"):
+        return "serverless"
+    return "development"
+
+
+_bootstrap_lock = threading.Lock()
+_bootstrapped = False
+
+
+def _register_bootstrap(app: Flask) -> None:
+    """Create the schema and load the demo dataset once per container.
+
+    Only the serverless profile opts in via AUTO_BOOTSTRAP. The work happens at
+    application creation (i.e. cold start) so the very first request already has
+    the seeded role accounts. It is idempotent, so warm re-imports are cheap.
+    """
+    if not app.config.get("AUTO_BOOTSTRAP"):
+        return
+
+    global _bootstrapped
+    with _bootstrap_lock:
+        if _bootstrapped:
+            return
+        try:
+            with app.app_context():
+                from .seed import seed_all
+
+                summary = seed_all()
+            app.logger.info("Bootstrap complete: %s", summary)
+        except Exception:  # noqa: BLE001 - setup must never take the app down
+            app.logger.exception(
+                "Bootstrap failed; continuing with an empty database"
+            )
+        _bootstrapped = True
 
 
 def _register_edge(app: Flask) -> None:

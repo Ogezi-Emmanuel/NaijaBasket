@@ -8,6 +8,8 @@ by environment variables for deployment without code changes.
 import os
 from datetime import timedelta
 
+from sqlalchemy.pool import NullPool
+
 BASE_DIR = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 
 
@@ -32,6 +34,25 @@ def _float_env(name: str, default: float) -> float:
         return float(os.environ.get(name, default))
     except (TypeError, ValueError):
         return default
+
+
+#: Serverless functions get one writable directory. On Vercel this is /tmp.
+SERVERLESS_DB_PATH = "/tmp/naijabasket.db"
+SERVERLESS_DB_URI = "sqlite:///" + SERVERLESS_DB_PATH
+
+
+def _serverless_engine_options(uri: str) -> dict:
+    """Engine options for a stateless function container.
+
+    Connections cannot outlive an invocation, so pooling is pointless (and
+    risky) -> NullPool opens a fresh connection each time. SQLite also needs
+    cross-thread access enabled because the runtime may reuse a worker thread.
+    """
+    options: dict = {"pool_pre_ping": True, "poolclass": NullPool}
+    if uri.startswith("sqlite"):
+        options["connect_args"] = {"check_same_thread": False, "timeout": 30}
+    return options
+
 
 
 class Config:
@@ -185,9 +206,48 @@ class ProductionConfig(Config):
             raise RuntimeError("ENCRYPTION_KEY must be set in production")
 
 
+class ServerlessConfig(ProductionConfig):
+    """Vercel / serverless profile.
+
+    A function container is ephemeral and mostly read-only, so this profile:
+      * keeps the database in /tmp (the only writable path) unless a managed
+        DATABASE_URL is supplied;
+      * disables connection pooling;
+      * bootstraps the demo dataset on first touch, so the seeded role accounts
+        work on a pristine deploy with no external host and no manual step;
+      * tolerates missing SECRET_KEY / ENCRYPTION_KEY instead of refusing to boot.
+    """
+
+    SQLALCHEMY_DATABASE_URI = _normalize_db_uri(
+        os.environ.get("DATABASE_URL") or SERVERLESS_DB_URI
+    )
+    SQLALCHEMY_ENGINE_OPTIONS = _serverless_engine_options(
+        os.environ.get("DATABASE_URL") or SERVERLESS_DB_URI
+    )
+
+    # No shared Redis / worker exists per-invocation; memory is the only store.
+    RATELIMIT_STORAGE_URI = os.environ.get("RATELIMIT_STORAGE_URI") or "memory://"
+
+    # Demo-friendly: derive a stable key so a zero-config deploy still boots.
+    SECRET_KEY = os.environ.get("SECRET_KEY") or "naijabasket-vercel-demo-secret"
+    ENCRYPTION_KEY = os.environ.get("ENCRYPTION_KEY", "")
+
+    # Create the schema and load the demo dataset on cold start.
+    AUTO_BOOTSTRAP = True
+
+    @staticmethod
+    def init_app(app):  # deliberately lenient - this is the zero-config profile
+        app.logger.info(
+            "Serverless profile active: db=%s bootstrap=%s",
+            app.config["SQLALCHEMY_DATABASE_URI"],
+            app.config.get("AUTO_BOOTSTRAP"),
+        )
+
+
 CONFIGS = {
     "development": DevelopmentConfig,
     "testing": TestingConfig,
     "production": ProductionConfig,
+    "serverless": ServerlessConfig,
     "default": DevelopmentConfig,
 }
